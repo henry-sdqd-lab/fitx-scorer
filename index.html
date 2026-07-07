@@ -49,6 +49,7 @@
   .nav-item[data-sec="service"]::before,.nav-item[data-sec="surroundings"]::before{background:var(--cal-green);}
   .nav-item[data-sec="cardio"]::before,.nav-item[data-sec="locker"]::before{background:var(--cal-white);}
   .nav-item[data-sec="bonus"]::before{background:var(--cal-chrome);}
+  .nav-item[data-sec="final"]::before{background:var(--ice);}
   .nav-item:hover{background:var(--bg3);color:var(--ice);}
   .nav-item.active{background:var(--bg2);color:var(--ice);border-left-color:var(--ice);font-weight:700;}
     .nav-score{font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);}
@@ -67,6 +68,7 @@
   #section-layout .section-header::after{background:var(--cal-yellow);}
   #section-service .section-header::after,#section-surroundings .section-header::after{background:var(--cal-green);}
   #section-bonus .section-header::after{background:var(--cal-chrome);}
+  #section-final .section-header::after{background:var(--ice);}
   .section-title{font-family:var(--display);font-stretch:125%;font-weight:900;font-size:2.5rem;line-height:1.05;letter-spacing:0.5px;color:var(--ice);text-transform:uppercase;}
   .section-subtitle{font-size:0.72rem;color:var(--text-dim);margin-top:0.55rem;font-family:var(--mono);letter-spacing:0.5px;}
 
@@ -154,6 +156,22 @@
   .bonus-tag{display:inline-block;font-family:var(--mono);font-size:0.63rem;font-weight:700;padding:2px 7px;border-radius:2px;background:var(--bg);border:1px solid var(--cal-chrome);color:var(--text-mid);margin:2px;}
   .bonus-label{font-size:0.68rem;color:var(--text-dim);padding:0.35rem 0.5rem;font-family:var(--mono);}
   .bonus-note{font-size:0.68rem;color:var(--steel);}
+  .final-card{padding:0;overflow:hidden;}
+  .final-hero{display:grid;grid-template-columns:1.05fr 0.95fr;gap:1.4rem;align-items:center;padding:1.35rem;background:var(--bg2);}
+  .final-place{font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.55rem;}
+  .final-name{font-family:var(--display);font-weight:900;font-size:2.15rem;line-height:1.08;color:var(--ice);word-break:break-word;}
+  .final-scoreline{display:flex;align-items:baseline;gap:0.8rem;margin-top:1rem;}
+  .final-score{font-family:var(--mono);font-weight:800;font-size:2.65rem;line-height:1;color:var(--steel);}
+  .final-grade{font-family:var(--display);font-weight:900;font-size:1.55rem;color:var(--bg);background:var(--ice);border-radius:4px;padding:0.22rem 0.65rem;}
+  .final-sub{font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);margin-top:0.65rem;}
+  .radar-wrap{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.75rem;}
+  .radar-svg{width:100%;height:auto;display:block;max-width:360px;margin:auto;}
+  .final-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.65rem;padding:1rem 1.35rem 1.35rem;border-top:1px solid var(--border);background:var(--bg2);}
+  .metric-tile{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:0.75rem;}
+  .metric-head{display:flex;justify-content:space-between;gap:0.75rem;align-items:baseline;font-size:0.78rem;color:var(--text-mid);font-weight:700;}
+  .metric-val{font-family:var(--mono);color:var(--ice);}
+  .metric-bar{height:5px;background:var(--bg3);margin-top:0.5rem;overflow:hidden;}
+  .metric-fill{height:100%;background:var(--ice);}
   .mobile-actionbar{display:none;}
 
   ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
@@ -227,6 +245,12 @@
     #mobile-prev[disabled],#mobile-next[disabled]{opacity:.45;}
     .app-actions{display:grid;grid-template-columns:1fr 1fr;}
     .action-btn{min-height:44px;}
+    .final-hero{display:block;padding:1rem;}
+    .final-name{font-size:1.55rem;}
+    .final-score{font-size:2.2rem;}
+    .final-grade{font-size:1.15rem;}
+    .radar-wrap{margin-top:1rem;}
+    .final-metrics{grid-template-columns:1fr;padding:0.9rem 1rem 1rem;}
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{transition:none !important;animation:none !important;}
@@ -273,6 +297,11 @@
   <div class="nav-section">
     <div class="nav-label">加分项</div>
     <div class="nav-item" data-sec="bonus">加分项 <span class="nav-score" id="nv-bonus">—</span></div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-section">
+    <div class="nav-label">结果</div>
+    <div class="nav-item" data-sec="final">最终页 <span class="nav-score" id="nv-final">—</span></div>
   </div>
 </nav>
 
@@ -901,6 +930,28 @@
   </div>
 </div>
 
+<!-- FINAL -->
+<div class="section" id="section-final">
+  <div class="section-header"><div class="section-title">最终页</div><div class="section-subtitle">评分结果与各项指标总览</div></div>
+  <div class="card final-card">
+    <div class="final-hero">
+      <div>
+        <div class="final-place" id="final-place">未填写城市</div>
+        <div class="final-name" id="final-name">未命名场馆</div>
+        <div class="final-scoreline">
+          <div class="final-score" id="final-score">0.00</div>
+          <div class="final-grade" id="final-grade">D</div>
+        </div>
+        <div class="final-sub" id="final-sub">基础 0.00 + 加分 0.00</div>
+      </div>
+      <div class="radar-wrap">
+        <svg class="radar-svg" id="final-radar" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="各项指标多边形图"></svg>
+      </div>
+    </div>
+    <div class="final-metrics" id="final-metrics"></div>
+  </div>
+</div>
+
 </main>
 
 <!-- RESULT -->
@@ -931,10 +982,10 @@
 <script>
 const S = () => Math.max(50, parseFloat(document.getElementById('gymArea').value)||500)
 const STORAGE_KEY = 'fitx-scorer-v4-draft'
-const SECTION_FLOW = ['info','fixed','free','cardio','layout','locker','service','surroundings','bonus']
+const SECTION_FLOW = ['info','fixed','free','cardio','layout','locker','service','surroundings','bonus','final']
 const SECTION_LABELS = {
   info:'场馆信息', fixed:'固定器械', free:'自由器械', cardio:'有氧器械',
-  layout:'空间布局', locker:'更衣', service:'服务', surroundings:'周边配套', bonus:'加分项',
+  layout:'空间布局', locker:'更衣', service:'服务', surroundings:'周边配套', bonus:'加分项', final:'最终页',
 }
 let activeSec = 'info'
 let isRestoring = false
@@ -1189,6 +1240,7 @@ function update() {
   document.getElementById('nv-service').textContent = res.svcBase.toFixed(1)
   document.getElementById('nv-surr').textContent = res.surroundBase.toFixed(1)
   document.getElementById('nv-bonus').textContent = '+'+res.bonusTotal.toFixed(1)
+  document.getElementById('nv-final').textContent = res.grade
 
   // ratio display
   const rrd = document.getElementById('ratio-r')
@@ -1298,8 +1350,82 @@ function update() {
     : `<span style="font-size:0.73rem;color:var(--text-dim)">暂无加分项</span>`
 
   renderBarbell(res)
+  renderFinalPage(res)
   updateMobileChrome(res)
   saveDraft()
+}
+
+function metricItems(res) {
+  return [
+    {id:'fixed', label:'固定器械', value:res.fixedRaw, max:28, color:'#C8102E'},
+    {id:'free', label:'自由器械', value:res.freeFull, max:22, color:'#0051BA'},
+    {id:'cardio', label:'有氧器械', value:res.cardioScore, max:5, color:'#FDFDFB'},
+    {id:'layout', label:'空间布局', value:Math.min(res.layoutRaw,20), max:20, color:'#E8A100'},
+    {id:'locker', label:'更衣', value:Math.min(res.lockerRaw,5), max:5, color:'#FDFDFB'},
+    {id:'service', label:'服务', value:res.svcBase, max:10, color:'#00843D'},
+    {id:'surroundings', label:'周边配套', value:res.surroundBase, max:10, color:'#00843D'},
+  ]
+}
+
+function renderFinalPage(res) {
+  const name = (document.getElementById('gymName')?.value || '').trim() || '未命名场馆'
+  const city = (document.getElementById('gymCity')?.value || '').trim() || '未填写城市'
+  const area = Math.round(S())
+  const nameEl = document.getElementById('final-name')
+  const placeEl = document.getElementById('final-place')
+  const scoreEl = document.getElementById('final-score')
+  const gradeEl = document.getElementById('final-grade')
+  const subEl = document.getElementById('final-sub')
+  if (nameEl) nameEl.textContent = name
+  if (placeEl) placeEl.textContent = `${city} · ${area}㎡`
+  if (scoreEl) scoreEl.textContent = res.grand.toFixed(2)
+  if (gradeEl) gradeEl.textContent = res.grade
+  if (subEl) subEl.textContent = `基础 ${res.baseScore.toFixed(2)} + 加分 ${res.bonusTotal.toFixed(2)}`
+
+  const metrics = metricItems(res)
+  const grid = document.getElementById('final-metrics')
+  if (grid) {
+    grid.innerHTML = metrics.map(m => {
+      const pct = Math.max(0, Math.min(100, (m.value / m.max) * 100))
+      return `<div class="metric-tile">
+        <div class="metric-head"><span>${m.label}</span><span class="metric-val">${m.value.toFixed(1)}/${m.max}</span></div>
+        <div class="metric-bar"><div class="metric-fill" style="width:${pct.toFixed(1)}%;background:${m.color};border:1px solid rgba(22,23,26,.18)"></div></div>
+      </div>`
+    }).join('')
+  }
+
+  const svg = document.getElementById('final-radar')
+  if (!svg) return
+  const cx = 160, cy = 160, radius = 96
+  const axes = metrics.length
+  const pointFor = (i, r) => {
+    const a = -Math.PI / 2 + (Math.PI * 2 * i / axes)
+    return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]
+  }
+  const rings = [0.25,0.5,0.75,1].map(scale => {
+    const pts = metrics.map((_, i) => pointFor(i, radius * scale).map(n => n.toFixed(1)).join(',')).join(' ')
+    return `<polygon points="${pts}" fill="none" stroke="#D8D4C8" stroke-width="1"/>`
+  }).join('')
+  const axisLines = metrics.map((m, i) => {
+    const [x,y] = pointFor(i, radius)
+    const [lx,ly] = pointFor(i, radius + 25)
+    const anchor = lx < cx - 10 ? 'end' : lx > cx + 10 ? 'start' : 'middle'
+    const pct = Math.max(0, Math.min(100, (m.value / m.max) * 100))
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#D8D4C8" stroke-width="1"/>
+      <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="10" fill="#4E4B43">${m.label}</text>
+      <text x="${lx.toFixed(1)}" y="${(ly+12).toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-family="SF Mono,Menlo,Consolas,monospace" font-size="8" fill="#8A8578">${pct.toFixed(0)}%</text>`
+  }).join('')
+  const valuePts = metrics.map((m, i) => {
+    const pct = Math.max(0, Math.min(1, m.value / m.max))
+    return pointFor(i, radius * pct).map(n => n.toFixed(1)).join(',')
+  }).join(' ')
+  const valueDots = metrics.map((m, i) => {
+    const pct = Math.max(0, Math.min(1, m.value / m.max))
+    const [x,y] = pointFor(i, radius * pct)
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="#C8102E" stroke="#16171A" stroke-width="1"/>`
+  }).join('')
+  svg.innerHTML = `${rings}${axisLines}<polygon points="${valuePts}" fill="rgba(200,16,46,.18)" stroke="#C8102E" stroke-width="2"/>${valueDots}
+    <circle cx="${cx}" cy="${cy}" r="2.5" fill="#16171A"/>`
 }
 
 // ---------- signature: loaded-barbell score visualization ----------
