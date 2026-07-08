@@ -1784,10 +1784,10 @@ function originalTableRows(res = engine()) {
     ['','','','补给：饮用水、水柜、咖啡/轻食',1,'',waterScore,`水：${yesNo(st.water)}；咖啡/轻食：${selectedText('#cafe-opts .opt.sel')}`],
     ['','','','开放时间',2,'',st.openHours ?? 0,selectedText('#hours-opts .opt.sel')],
     ['','','','卡价合理度：卡种、价格匹配、特殊卡种',3,'',pricingScore,`卡种多样：${yesNo(st.membership)}；价格：${selectedText('#price-opts .opt.sel')}；特殊卡：${yesNo(st.specialMembership)}`],
-    ['周边配套10%','交通','0.07','公共交通与停车',4,'',st.transport ?? 0,`周边总分：${res.surroundBase.toFixed(2)}/10；交通：${selectedText('#transport-opts .opt.sel')}；停车：${selectedText('#parking-opts .opt.sel')}`],
-    ['','','','停车便利度',3,'',st.parking ?? 0,''],
-    ['','生活','0.03','500米内配套环境',2,'',st.amenities ?? 0,`配套：${selectedText('#amenities-opts .opt.sel')}；辐射人群：${selectedText('#catchment-opts .opt.sel')}`],
-    ['','','','辐射人群',1,'',st.catchment ?? 0,''],
+    ['周边配套10%','交通','0.07','公共交通与停车',4,'',st.transport ?? 0,`周边总分：${res.surroundBase.toFixed(2)}/10；交通：${selectedText('#transport-opts .opt.sel')}`],
+    ['','','','停车便利度',3,'',st.parking ?? 0,`停车：${selectedText('#parking-opts .opt.sel')}`],
+    ['','生活','0.03','500米内配套环境',2,'',st.amenities ?? 0,`配套：${selectedText('#amenities-opts .opt.sel')}`],
+    ['','','','辐射人群',1,'',st.catchment ?? 0,`辐射人群：${selectedText('#catchment-opts .opt.sel')}`],
     ['总评分','','','',100,'',res.grand.toFixed(2),''],
     ['评级','SSR 95+ / SSS 92-94 / S 88-91 / A 83-87 / B 75-82 / C 65-74 / D <65','','','','',res.grade,''],
   ]
@@ -1951,8 +1951,8 @@ function setTemplateCell(doc, sheetData, ref, value, fallbackRef) {
 function templateCellWrites(res = engine()) {
   const rows = originalTableRows(res)
   const writes = [
-    ['A2', `健身房名称：${document.getElementById('gymName')?.value || ''}`, 'A2'],
-    ['E2', `城市：${document.getElementById('gymCity')?.value || ''}`, 'E2'],
+    ['D2', document.getElementById('gymName')?.value || '', 'D2'],
+    ['F2', document.getElementById('gymCity')?.value || '', 'F2'],
     ['G2', res.grand.toFixed(2), 'G2'],
     ['H2', `面积：${Math.round(S())}㎡；评级：${res.grade}`, 'H2'],
   ]
