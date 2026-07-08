@@ -73,7 +73,7 @@
   .section-subtitle{font-size:0.72rem;color:var(--text-dim);margin-top:0.55rem;font-family:var(--mono);letter-spacing:0.5px;}
 
   .card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:1.35rem 1.4rem;margin-bottom:1.1rem;}
-  .app-actions{display:flex;gap:0.55rem;flex-wrap:wrap;margin-top:0.25rem;}
+  .app-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.55rem;margin-top:0.25rem;}
   .action-btn{appearance:none;border:1px solid var(--ice);background:var(--ice);color:var(--bg);border-radius:4px;padding:0.55rem 0.85rem;font-size:0.78rem;font-weight:700;cursor:pointer;min-height:40px;}
   .action-btn.secondary{background:var(--bg2);color:var(--ice);border-color:var(--border);}
   .action-btn:focus-visible{outline:2px solid var(--steel);outline-offset:2px;}
@@ -153,6 +153,13 @@
   .coeff-row{display:flex;gap:0.4rem;flex-wrap:wrap;}
   .cbadge{font-family:var(--mono);font-size:0.66rem;padding:3px 8px;border-radius:2px;background:var(--bg);border:1px solid var(--border);color:var(--text-mid);}
   .cbadge span{color:var(--steel);font-weight:700;}
+  .coeff-total-box{background:var(--ice);color:var(--bg);border-radius:5px;padding:0.9rem 1rem;margin-top:0.9rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;}
+  .coeff-total-label{font-family:var(--mono);font-size:0.62rem;letter-spacing:1.7px;text-transform:uppercase;color:rgba(242,240,235,.72);}
+  .coeff-total-value{font-family:var(--mono);font-size:1.6rem;font-weight:800;line-height:1;color:var(--bg);}
+  .coeff-total-formula{font-family:var(--mono);font-size:0.66rem;color:var(--text-dim);line-height:1.6;margin-top:0.45rem;}
+  .result-panel .coeff-total-box{margin:0 0 0.75rem;background:var(--bg);color:var(--ice);border:1.5px solid var(--ice);}
+  .result-panel .coeff-total-label{color:var(--text-dim);}
+  .result-panel .coeff-total-value{color:var(--steel);}
   .bonus-tag{display:inline-block;font-family:var(--mono);font-size:0.63rem;font-weight:700;padding:2px 7px;border-radius:2px;background:var(--bg);border:1px solid var(--cal-chrome);color:var(--text-mid);margin:2px;}
   .bonus-label{font-size:0.68rem;color:var(--text-dim);padding:0.35rem 0.5rem;font-family:var(--mono);}
   .bonus-note{font-size:0.68rem;color:var(--steel);}
@@ -243,7 +250,7 @@
     #mobile-score{background:var(--ice);color:var(--bg);font-family:var(--mono);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
     #mobile-score small{font-size:0.58rem;color:rgba(242,240,235,.72);font-weight:400;}
     #mobile-prev[disabled],#mobile-next[disabled]{opacity:.45;}
-    .app-actions{display:grid;grid-template-columns:1fr 1fr;}
+    .app-actions{grid-template-columns:1fr;}
     .action-btn{min-height:44px;}
     .final-hero{display:block;padding:1rem;}
     .final-name{font-size:1.55rem;}
@@ -323,7 +330,9 @@
   <div class="card">
     <div class="card-title">数据操作</div>
     <div class="app-actions">
-      <button class="action-btn" type="button" id="btn-export">导出评分</button>
+      <button class="action-btn" type="button" id="btn-export">导出评分JSON</button>
+      <button class="action-btn" type="button" id="btn-export-xls">导出原表Excel</button>
+      <button class="action-btn secondary" type="button" id="btn-copy-row">复制表格行</button>
       <button class="action-btn secondary" type="button" id="btn-clear">清空重评</button>
     </div>
   </div>
@@ -363,6 +372,13 @@
       <div class="field" style="margin:0"><div class="field-label">插片机台数</div><input type="number" id="pin-count" value="0" min="0"></div>
       <div class="field" style="margin:0"><div class="field-label">挂片机台数</div><input type="number" id="plate-count" value="0" min="0"></div>
       <div style="font-family:var(--mono);font-size:0.8rem;color:var(--text-dim);padding-bottom:0.5rem">r=<span id="ratio-r">0.00</span> → <span id="ratio-c" style="color:var(--ice)">×1.1</span></div>
+    </div>
+    <div class="coeff-total-box" aria-live="polite">
+      <div>
+        <div class="coeff-total-label">固定器械总系数</div>
+        <div class="coeff-total-formula" id="coeff-total-formula-inline">品牌未选 × 搭配未选 × 插挂 ×1.10</div>
+      </div>
+      <div class="coeff-total-value" id="coeff-total-inline">待完善</div>
     </div>
   </div>
 
@@ -968,6 +984,13 @@
   <div class="res-sec">维度分解</div>
   <div id="dim-breakdown"></div>
   <div class="res-sec">固定器械系数</div>
+  <div class="coeff-total-box" aria-live="polite">
+    <div>
+      <div class="coeff-total-label">总系数</div>
+      <div class="coeff-total-formula" id="coeff-total-formula-side">品牌未选 × 搭配未选 × 插挂 ×1.10</div>
+    </div>
+    <div class="coeff-total-value" id="coeff-total-side">待完善</div>
+  </div>
   <div class="coeff-row" id="coeff-row"></div>
   <div class="res-sec">加分明细</div>
   <div id="bonus-detail"></div>
@@ -978,10 +1001,13 @@
   <button type="button" id="mobile-score"><span id="mobile-score-main">0.00 · —</span><small id="mobile-step-label">场馆信息</small></button>
   <button type="button" id="mobile-next">下一项</button>
 </div>
+<input type="file" id="template-file" accept=".xlsx" style="display:none">
 
+<script src="jszip.min.js"></script>
 <script>
 const S = () => Math.max(50, parseFloat(document.getElementById('gymArea').value)||500)
 const STORAGE_KEY = 'fitx-scorer-v4-draft'
+const XLSX_TEMPLATE_URL = 'fitx-score-template.xlsx'
 const SECTION_FLOW = ['info','fixed','free','cardio','layout','locker','service','surroundings','bonus','final']
 const SECTION_LABELS = {
   info:'场馆信息', fixed:'固定器械', free:'自由器械', cardio:'有氧器械',
@@ -1310,11 +1336,27 @@ function update() {
   if(rsh){ const n=st.recovery.size; rsh.textContent=n?`${n}项 → +${Math.min(n*0.5,2).toFixed(1)}分`:'暂无勾选' }
 
   // coeff
+  const coeffReady = st.brand !== null && st.mix !== null
+  const totalCoeff = res.brandC * res.mixC * res.ratioC
+  const coeffText = coeffReady ? `×${totalCoeff.toFixed(3)}` : '待完善'
+  const coeffFormula = [
+    st.brand !== null ? `品牌 ×${res.brandC.toFixed(2)}` : '品牌未选',
+    st.mix !== null ? `搭配 ×${res.mixC.toFixed(2)}` : '搭配未选',
+    `插挂 ×${res.ratioC.toFixed(2)}`,
+  ].join(' · ')
+  ;['coeff-total-inline','coeff-total-side'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.textContent = coeffText
+  })
+  ;['coeff-total-formula-inline','coeff-total-formula-side'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.textContent = coeffFormula
+  })
   document.getElementById('coeff-row').innerHTML = [
     `品牌 <span>${st.brand!==null?'×'+res.brandC.toFixed(2):'未选'}</span>`,
     `搭配 <span>${st.mix!==null?'×'+res.mixC:'未选'}</span>`,
     `插挂 <span>×${res.ratioC}</span>`,
-    `合计 <span>×${(res.brandC*res.mixC*res.ratioC).toFixed(3)}</span>`,
+    `合计 <span>${coeffReady ? `×${totalCoeff.toFixed(3)}` : '待完善'}</span>`,
   ].map(t=>`<div class="cbadge">${t}</div>`).join('')
 
   // dim breakdown
@@ -1609,6 +1651,407 @@ function serializeDraft() {
   }
 }
 
+const TABLE_COLUMNS = [
+  '记录时间','城市','馆名','训练区面积㎡','总分','评级','基础分','加分',
+  '器械区','固定器械','自由器械','有氧器械','环境','空间布局','更衣','服务','周边配套',
+  '固定器械总系数','品牌系数','搭配系数','插挂系数'
+]
+
+function tableCell(v) {
+  return String(v ?? '').replace(/\t|\r?\n/g, ' ').trim()
+}
+
+function scoreTableValues(res = engine()) {
+  const coeffReady = st.brand !== null && st.mix !== null
+  const totalCoeff = coeffReady ? res.brandC * res.mixC * res.ratioC : ''
+  return [
+    new Date().toLocaleString('zh-CN', {hour12:false}),
+    document.getElementById('gymCity')?.value || '',
+    document.getElementById('gymName')?.value || '',
+    Math.round(S()),
+    res.grand.toFixed(2),
+    res.grade,
+    res.baseScore.toFixed(2),
+    res.bonusTotal.toFixed(2),
+    res.equipBase.toFixed(1),
+    res.fixedRaw.toFixed(1),
+    res.freeFull.toFixed(1),
+    res.cardioScore.toFixed(1),
+    res.envBase.toFixed(1),
+    Math.min(res.layoutRaw,20).toFixed(1),
+    Math.min(res.lockerRaw,5).toFixed(1),
+    res.svcBase.toFixed(1),
+    res.surroundBase.toFixed(1),
+    coeffReady ? totalCoeff.toFixed(3) : '',
+    st.brand !== null ? res.brandC.toFixed(2) : '',
+    st.mix !== null ? res.mixC.toFixed(2) : '',
+    res.ratioC.toFixed(2),
+  ]
+}
+
+function scoreTableRowTSV() {
+  return scoreTableValues().map(tableCell).join('\t')
+}
+
+function selectedText(selector) {
+  return document.querySelector(selector)?.textContent?.trim() || '未选'
+}
+
+function checkedTexts(containerId) {
+  return [...document.querySelectorAll(`#${containerId} .chk.on`)].map(el => el.textContent.trim())
+}
+
+function yesNo(v) {
+  return v ? '是' : '否'
+}
+
+function scoreNoteParts(parts) {
+  return parts.filter(Boolean).join('；')
+}
+
+function originalTableRows(res = engine()) {
+  const coeffReady = st.brand !== null && st.mix !== null
+  const totalCoeff = coeffReady ? (res.brandC * res.mixC * res.ratioC).toFixed(3) : '未完善'
+  const cats = CATS.filter(c => st.cats[c.id]).map(c => c.l).join('、') || '未勾选'
+  const muscleNote = MUSCLES.map(g => `${g.l}${st.muscles[g.id] || 0}/${muscleBase(g, S())}`).join('，')
+  const barTypes = checkedTexts('barbell-bar-types').join('、') || '未勾选'
+  const barEls = [...document.querySelectorAll('#barbell-bar-types .chk.on')]
+  const specialBars = barEls.filter(el => SPECIAL_BAR_IDS.has(el.dataset.id)).map(el => el.textContent.trim()).join('、') || '未达标'
+  const plateTypes = checkedTexts('plate-types').join('、') || '未勾选'
+  const lo = st.layout
+  const layoutCoreScore = (lo.zoning ?? 0) + (lo.circulation ?? 0) + (lo.ceiling ?? 0) + (lo.crowd ?? 0)
+  const layoutFuncScore = (lo.funcSpace ?? 0) + res.ftScore
+  const comfortScore = (lo.odor ?? 0) + (lo.ventilation ?? 0)
+  const visualAudioScore = (lo.visual ?? 0) + (lo.audio ?? 0)
+  const infraScore = (st.scanner ? 0.5 : 0) + (st.access ? 0.5 : 0)
+  const staffScore = (st.staffAttitude ?? 0) + (st.upkeep ?? 0)
+  const trainerScore = Math.max(st.trainer ? 1 : 0, st.freeTrainer ? 1 : 0)
+  const waterScore = st.water ? 1 : 0
+  const pricingScore = (st.membership ? 1 : 0) + (st.priceMatch ?? 0)
+  const cardioNote = `跑步机${st.cardio.treadmill}，椭圆机${st.cardio.elliptical}，楼梯机${st.cardio.stairmaster}，单车${st.cardio.bike}，其他${st.cardio.other}；类型${res.cardioTypes}种；故障降档：${yesNo(st.cardioFail)}`
+  const bonusNote = scoreNoteParts([
+    `Hyrox/CF：${yesNo(st.hyrox)}`,
+    `超大功能区：${yesNo(st.funcArea)}`,
+    `泳池：${yesNo(st.pool)}`,
+    `恢复设施：${checkedTexts('recovery-checks').join('、') || '未勾选'}`,
+    `造型室：${yesNo(st.styling)}`,
+    `AED：${yesNo(st.aed)}`,
+    `团课加分：${yesNo(st.groupClass)}`,
+    `咖啡/轻食：${selectedText('#cafe-opts .opt.sel')}`,
+    `特殊卡种：${yesNo(st.specialMembership)}`,
+  ])
+  return [
+    ['健身房测评表V2.0','','','','','','',''],
+    ['健身房名称', document.getElementById('gymName')?.value || '', '', '', '城市', document.getElementById('gymCity')?.value || '', res.grand.toFixed(2), `面积：${Math.round(S())}㎡；评级：${res.grade}`],
+    ['测评内容','','权重','评分标准','满分','','评分','备注'],
+    ['器械区 55%','固定器械','固定器械整体系数','品牌选择投入度：大部分优质进口1.0/偏混合或优质国产0.95/普通国产0.9/低端0.8；维护差降档',1,'',st.brand !== null ? res.brandC : '',`品牌：${selectedText('#brand-opts .opt.sel')}；维护差：${yesNo(st.maintenance)}；总系数：${totalCoeff}`],
+    ['','','','器械搭配成熟度：单一品牌>70% 0.95；主品牌约50%并有混搭 1.00；多品牌合理且特色≥20% 1.10',1.1,'',st.mix !== null ? res.mixC : '',`搭配：${selectedText('#mix-opts .opt.sel')}`],
+    ['','','','优秀混搭/中古高价值经典机型/部位机皇/市场稀缺特色机，可在备注中记录','','','',''],
+    ['','','','插挂比例合理度：r≤0.60 1.1；0.60<r≤0.75 1.00；r>0.75 0.9',1.1,'',res.ratioC,`插片${st.pinCount}台，挂片${st.plateCount}台，r=${res.pin===0&&res.plate===0?'未填':res.r.toFixed(2)}，系数×${res.ratioC.toFixed(2)}`],
+    ['','','0.28','16大类逐类计分，每类0.5分；机器存在但不可用/缺件计0',8,'',res.catScore,`已勾选：${cats}；覆盖分 ${res.catScore.toFixed(1)}/8`],
+    ['','','','','','','',''],
+    ['','','','','','','',''],
+    ['','','','6组肌群同肌群多角度/多轨迹覆盖：胸、背、腿、肩、手臂、腹部',20,'',res.covScore,`部位台数：${muscleNote}；部位覆盖 ${res.covEarned}/${res.covMax}，得分 ${res.covScore.toFixed(1)}/20`],
+    ['','','','','','','',''],
+    ['','','','','','','',''],
+    ['','自由器械','0.22','绳动器械：多站位/小龙门/八爪鱼',4,'',res.rope,`自由器械总分：${res.freeFull.toFixed(2)}；绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
+    ['','','','总站位数量≥S/100；配件丰富升档，故障降档','','','',`绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
+    ['','','','史密斯：高质量且保养稳定；数量=S/500',1,'',res.smith,`史密斯${st.smithCount}台，基准${res.smithBase}，质量达标：${yesNo(st.smithQuality)}，得分${res.smith}`],
+    ['','','','力量区基础项：深蹲架/卧推台/哑铃/杠铃杆/杠铃片/可调凳/硬拉平台',15,'',res.basicSum + res.allMaxBonus,scoreNoteParts([`深蹲架${st.sqRackCount}台-${selectedText('#sqrack-opts .opt.sel')}`,`卧推台${st.benchCount}台-${selectedText('#bench-opts .opt.sel')}`,`哑铃最大${st.dumbbellMax}kg-${selectedText('#dumbbell-opts .opt.sel')}`,`杠铃杆-${selectedText('#barbell-bar-opts .opt.sel')}；杆型：${barTypes}`,`杠铃片-${selectedText('#plate-opts .opt.sel')}；片型：${plateTypes}`,`可调凳${st.adjBenchCount}台-${selectedText('#adj-bench-opts .opt.sel')}`,`硬拉/举重平台${st.deadliftCount}个-${selectedText('#deadlift-opts .opt.sel')}`,`基础项${res.basicSum.toFixed(1)}，全满加分${res.allMaxBonus}`])],
+    ['','','','数量基准：综合架S/300；卧推架S/300上限6；可调凳S/100且基础值4','','','',''],
+    ['','','','力量区深度项：专项杠铃≥2种；赛级卧推凳/钢片架；附件齐全；硬拉台工艺/多套哑铃',2,'',res.advScore,`专项杠铃：${specialBars}（${res.adv1SpecialCount}/2）；赛级卧推/钢片架：${yesNo(st.advancedSet.has('adv2'))}；附件齐全：${yesNo(st.advancedSet.has('adv3'))}；硬拉台/多套哑铃：${yesNo(st.advancedSet.has('adv4'))}；深度分${res.advScore.toFixed(1)}`],
+    ['','有氧器械','0.05','数量=S/100，基础值5；类型至少含跑步机/椭圆机/楼梯机/单车中的三类',5,'',res.cardioScore.toFixed(2),cardioNote],
+    ['','','','数量≤3台或多台故障→1；数量略少且类型≤2→2；高于基础且类型≥3→3-4；1.5倍且类型≥4→5','','','',''],
+    ['环境 25%','空间布局','0.2','布局/动线/层高/高峰排队感',5,'',layoutCoreScore,scoreNoteParts([`空间布局总分：${Math.min(res.layoutRaw,20).toFixed(2)}/20`,`分区：${selectedText('#layout-zoning .opt.sel')}`,`动线：${selectedText('#layout-circulation .opt.sel')}`,`层高：${selectedText('#layout-ceiling .opt.sel')}`,`高峰排队：${selectedText('#layout-crowd .opt.sel')}`])],
+    ['','','','功能训练区：空间可用性与工具覆盖',5,'',layoutFuncScore,`面积：${selectedText('#layout-func-space .opt.sel')}；工具：${selectedText('#layout-func-tools .opt.sel')}`],
+    ['','','','休息区/开放吧台',1,'',lo.rest ?? 0,selectedText('#layout-rest .opt.sel')],
+    ['','','','体感：气味空气、温度通风',2,'',comfortScore,`气味：${selectedText('#layout-odor .opt.sel')}；通风：${selectedText('#layout-ventilation .opt.sel')}`],
+    ['','','','卫生：消毒用具便利',2,'',lo.hygiene ?? 0,selectedText('#layout-hygiene .opt.sel')],
+    ['','','','地面：地垫覆盖率与厚度',1,'',lo.flooring ?? 0,selectedText('#layout-flooring .opt.sel')],
+    ['','','','视觉与听觉',1,'',visualAudioScore,`视觉：${selectedText('#layout-visual .opt.sel')}；听觉：${selectedText('#layout-audio .opt.sel')}`],
+    ['','','','灯光/镜面/拍摄友好',1,'',lo.mirror ?? 0,selectedText('#layout-mirror .opt.sel')],
+    ['','','','造型室+0.5','','','',`造型室：${yesNo(st.styling)}`],
+    ['','','','氛围与归位秩序',2,'',lo.atmosphere ?? 0,selectedText('#layout-atmosphere .opt.sel')],
+    ['','','','归位很差0；一般1；高归位2','','','',''],
+    ['','更衣','0.05','柜子：数量、监控、密码柜、置物空间',1,'',st.lockerStorage,`更衣总分：${Math.min(res.lockerRaw,5).toFixed(2)}/5；柜子：${checkedTexts('locker-storage-checks').join('、') || '未勾选'}`],
+    ['','','','淋浴：水压、水温、排水、清洁',1,'',st.shower,`淋浴：${checkedTexts('shower-checks').join('、') || '未勾选'}`],
+    ['','','','更衣室设计：男女分离、隔断、干湿分离、台面镜凳、吹风机',2,'',st.lockerDesign,`设计：${checkedTexts('locker-design-checks').join('、') || '未勾选'}`],
+    ['','','','卫生间：场馆内独立、男女分区、距离、整洁',1,'',st.restroom,`卫生间：${checkedTexts('restroom-checks').join('、') || '未勾选'}`],
+    ['','加分','','训练生态/恢复设施/超大功能区/泳池等',0,'',res.bonusTotal.toFixed(2),bonusNote],
+    ['服务10%','','0.1','基础设施：体测机、门禁、AED',1,'',infraScore,`服务总分：${res.svcBase.toFixed(2)}/10；体测机：${yesNo(st.scanner)}；门禁：${yesNo(st.access)}；AED：${yesNo(st.aed)}`],
+    ['','','','人员服务与维护秩序',2,'',staffScore,`态度：${selectedText('#svc-attitude-opts .opt.sel')}；维护：${selectedText('#svc-upkeep-opts .opt.sel')}`],
+    ['','','','教练/团课/自由教练',1,'',trainerScore,`教练认证：${yesNo(st.trainer)}；团课：${yesNo(st.groupClass)}；自由教练：${yesNo(st.freeTrainer)}`],
+    ['','','','补给：饮用水、水柜、咖啡/轻食',1,'',waterScore,`水：${yesNo(st.water)}；咖啡/轻食：${selectedText('#cafe-opts .opt.sel')}`],
+    ['','','','开放时间',2,'',st.openHours ?? 0,selectedText('#hours-opts .opt.sel')],
+    ['','','','卡价合理度：卡种、价格匹配、特殊卡种',3,'',pricingScore,`卡种多样：${yesNo(st.membership)}；价格：${selectedText('#price-opts .opt.sel')}；特殊卡：${yesNo(st.specialMembership)}`],
+    ['周边配套10%','交通','0.07','公共交通与停车',4,'',st.transport ?? 0,`周边总分：${res.surroundBase.toFixed(2)}/10；交通：${selectedText('#transport-opts .opt.sel')}；停车：${selectedText('#parking-opts .opt.sel')}`],
+    ['','','','停车便利度',3,'',st.parking ?? 0,''],
+    ['','生活','0.03','500米内配套环境',2,'',st.amenities ?? 0,`配套：${selectedText('#amenities-opts .opt.sel')}；辐射人群：${selectedText('#catchment-opts .opt.sel')}`],
+    ['','','','辐射人群',1,'',st.catchment ?? 0,''],
+    ['总评分','','','',100,'',res.grand.toFixed(2),''],
+    ['评级','SSR 95+ / SSS 92-94 / S 88-91 / A 83-87 / B 75-82 / C 65-74 / D <65','','','','',res.grade,''],
+  ]
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>')
+}
+
+function exportOriginalFormatExcelFallback() {
+  const rows = originalTableRows()
+  const mergeStarts = {
+    '0,0': {colspan:8, cls:'title'},
+    '1,0': {colspan:3, cls:'tophead'}, '1,4': {colspan:2, cls:'tophead'}, '1,6': {rowspan:2, cls:'tophead score-head'}, '1,7': {rowspan:2, cls:'tophead'},
+    '2,0': {colspan:2, cls:'head'}, '2,4': {colspan:2, cls:'head'},
+    '3,0': {rowspan:18, cls:'section section-equipment'}, '3,1': {rowspan:10, cls:'subsection'}, '3,2': {rowspan:4, cls:'weight'},
+    '4,4': {colspan:2}, '6,4': {colspan:2}, '7,3': {rowspan:3}, '7,4': {rowspan:3, colspan:2}, '7,6': {rowspan:3, cls:'score'}, '7,7': {rowspan:3, cls:'note'},
+    '10,3': {rowspan:3}, '10,4': {rowspan:3, colspan:2}, '10,6': {rowspan:3, cls:'score'}, '10,7': {rowspan:3, cls:'note'},
+    '13,1': {rowspan:6, cls:'subsection'}, '13,2': {rowspan:6, cls:'weight'}, '13,4': {colspan:2}, '16,4': {colspan:2}, '18,4': {colspan:2},
+    '19,1': {rowspan:2, cls:'subsection'}, '19,2': {rowspan:2, cls:'weight'}, '19,4': {colspan:2}, '20,3': {colspan:5, cls:'criteria-wide'},
+    '21,0': {rowspan:16, cls:'section section-env'}, '21,1': {rowspan:10, cls:'subsection'}, '21,2': {rowspan:10, cls:'weight'}, '21,4': {colspan:2}, '22,4': {colspan:2}, '23,4': {colspan:2}, '24,4': {colspan:2}, '25,4': {colspan:2}, '26,4': {colspan:2}, '27,4': {colspan:2}, '28,4': {colspan:2}, '29,3': {colspan:5, cls:'criteria-wide'}, '30,4': {colspan:2}, '31,3': {colspan:5, cls:'criteria-wide'},
+    '32,1': {rowspan:4, cls:'subsection'}, '32,2': {rowspan:4, cls:'weight'}, '32,4': {colspan:2}, '33,4': {colspan:2}, '34,4': {colspan:2}, '35,4': {colspan:2},
+    '36,1': {cls:'subsection'}, '37,0': {rowspan:6, cls:'section section-service'}, '37,1': {rowspan:6, cls:'subsection'}, '37,2': {rowspan:6, cls:'weight'}, '37,4': {colspan:2}, '38,4': {colspan:2}, '39,4': {colspan:2}, '40,4': {colspan:2}, '41,4': {colspan:2}, '42,4': {colspan:2},
+    '43,0': {rowspan:3, cls:'section section-surround'}, '43,1': {rowspan:2, cls:'subsection'}, '43,2': {rowspan:2, cls:'weight'}, '43,4': {colspan:2}, '44,4': {colspan:2},
+    '45,1': {rowspan:2, cls:'subsection'}, '45,2': {rowspan:2, cls:'weight'}, '45,4': {colspan:2}, '46,4': {colspan:2},
+    '47,4': {colspan:2}, '48,1': {colspan:7, cls:'rating-scale'},
+  }
+  const skip = new Set()
+  Object.entries(mergeStarts).forEach(([key, cfg]) => {
+    const [r,c] = key.split(',').map(Number)
+    const rs = cfg.rowspan || 1
+    const cs = cfg.colspan || 1
+    for (let rr=r; rr<r+rs; rr++) {
+      for (let cc=c; cc<c+cs; cc++) {
+        if (rr !== r || cc !== c) skip.add(`${rr},${cc}`)
+      }
+    }
+  })
+  const rowHeights = [26,30,22,76,76,66,76,26,44,22,34,22,110,24,42,26,88,56,88,58,58,76,88,26,58,30,30,42,42,42,42,26,42,42,42,42,76,58,42,58,42,26,76,58,42,88,42,28,92]
+  const htmlRows = rows.map((row, ridx) => {
+    const sectionRow = ['0','3','13','19','21','32','36','37','43','45','47','48'].includes(String(ridx)) ? ' section-start' : ''
+    return `<tr style="height:${rowHeights[ridx] || 34}px" class="${sectionRow}">${row.map((cell, cidx) => {
+      if (skip.has(`${ridx},${cidx}`)) return ''
+      const cfg = mergeStarts[`${ridx},${cidx}`] || {}
+      const tag = ridx === 0 || ridx === 2 ? 'th' : 'td'
+      const attrs = `${cfg.rowspan ? ` rowspan="${cfg.rowspan}"` : ''}${cfg.colspan ? ` colspan="${cfg.colspan}"` : ''}`
+      const classes = [
+        cfg.cls || '',
+        cidx === 2 ? 'weight' : '',
+        cidx === 3 ? 'criteria' : '',
+        cidx === 6 ? 'score' : '',
+        cidx === 7 ? 'note' : '',
+        ridx === 47 ? 'total-row' : '',
+        ridx === 48 ? 'rating-row' : '',
+      ].filter(Boolean).join(' ')
+      return `<${tag}${attrs} class="${classes}">${escapeHtml(cell)}</${tag}>`
+    }).join('')}</tr>`
+  }).join('')
+  const colGroup = `<colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"></colgroup>`
+  const html = `<!doctype html><html><head><meta charset="UTF-8">
+  <style>
+    body{font-family:'KaiTi','STKaiti','Microsoft YaHei',Arial,sans-serif;background:#fff}
+    table{border-collapse:collapse;table-layout:fixed;width:1160px}
+    col.c1{width:86px} col.c2{width:58px} col.c3{width:74px} col.c4{width:610px}
+    col.c5{width:62px} col.c6{width:104px} col.c7{width:86px} col.c8{width:420px}
+    th,td{border:1px solid #7f8fa6;padding:6px 8px;vertical-align:middle;mso-number-format:"\\@";white-space:normal;word-break:break-word;font-size:11pt;line-height:1.25;color:#08090C}
+    th{background:#4874CB;color:#fff;font-weight:700;text-align:center}
+    .title{font-size:20pt;font-weight:700;text-align:center;color:#4874CB;background:#fff;border:none;border-bottom:3px solid #4874CB;padding:12px}
+    .tophead,.head{background:#4874CB;color:#fff;font-weight:700;text-align:center}
+    .section{background:#D9E2F3;font-weight:700;text-align:center;color:#1F3763}
+    .section-equipment{background:#D9E2F3}
+    .section-env{background:#E2F0D9;color:#375623}
+    .section-service{background:#FFF2CC;color:#7F6000}
+    .section-surround{background:#EADCF8;color:#5F2D87}
+    .subsection{background:#F4F6FA;font-weight:700;text-align:center}
+    .weight{text-align:center;font-weight:700;background:#F7F9FD}
+    .criteria{text-align:left;font-weight:700}
+    .criteria-wide{text-align:left;background:#F8FAFF}
+    .score{background:#EBF0FA;font-weight:700;text-align:center;mso-number-format:"0.00";color:#1F3763}
+    .score-head{background:#4874CB;color:#fff}
+    .note{background:#FFFDF7;text-align:left;font-size:10pt;color:#333}
+    .total-row td{background:#D9E2F3;font-weight:700;border-top:3px solid #4874CB}
+    .total-row .score{font-size:14pt;color:#C8102E}
+    .rating-row td{background:#F6F8FD;font-weight:700}
+    .rating-scale{font-weight:700;text-align:left;color:#4874CB}
+    .section-start td,.section-start th{border-top:2px solid #4874CB}
+  </style></head><body><table>${colGroup}${htmlRows}</table></body></html>`
+  const gym = ((document.getElementById('gymName')?.value || 'fitx-scorer').trim() || 'fitx-scorer').replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
+  downloadText(`${gym}-健身房评分表-${new Date().toISOString().slice(0,10)}.xls`, '\ufeff' + html, 'application/vnd.ms-excel;charset=utf-8')
+}
+
+function colToNumber(col) {
+  return col.split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0)
+}
+
+function cellParts(ref) {
+  const m = /^([A-Z]+)(\d+)$/.exec(ref)
+  return {col:m[1], row:parseInt(m[2],10), colNum:colToNumber(m[1])}
+}
+
+function xlsxXmlEscape(v) {
+  return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
+function getOrCreateRow(doc, sheetData, rowNum) {
+  let row = [...sheetData.getElementsByTagName('row')].find(r => r.getAttribute('r') === String(rowNum))
+  if (row) return row
+  row = doc.createElementNS(sheetData.namespaceURI, 'row')
+  row.setAttribute('r', String(rowNum))
+  const rows = [...sheetData.getElementsByTagName('row')]
+  const next = rows.find(r => parseInt(r.getAttribute('r'),10) > rowNum)
+  sheetData.insertBefore(row, next || null)
+  return row
+}
+
+function getOrCreateCell(doc, sheetData, ref, fallbackRef) {
+  const {row: rowNum, colNum} = cellParts(ref)
+  const row = getOrCreateRow(doc, sheetData, rowNum)
+  let cell = [...row.getElementsByTagName('c')].find(c => c.getAttribute('r') === ref)
+  if (cell) return cell
+  cell = doc.createElementNS(row.namespaceURI, 'c')
+  cell.setAttribute('r', ref)
+  const fallback = fallbackRef ? doc.querySelector(`c[r="${fallbackRef}"]`) : null
+  if (fallback?.getAttribute('s')) cell.setAttribute('s', fallback.getAttribute('s'))
+  const cells = [...row.getElementsByTagName('c')]
+  const next = cells.find(c => colToNumber((c.getAttribute('r') || '').replace(/\d+/g,'')) > colNum)
+  row.insertBefore(cell, next || null)
+  return cell
+}
+
+function clearCellChildren(cell) {
+  while (cell.firstChild) cell.removeChild(cell.firstChild)
+  ;['t','cm','vm','ph'].forEach(a => cell.removeAttribute(a))
+}
+
+function setInlineString(doc, cell, value) {
+  clearCellChildren(cell)
+  cell.setAttribute('t','inlineStr')
+  const is = doc.createElementNS(cell.namespaceURI, 'is')
+  const t = doc.createElementNS(cell.namespaceURI, 't')
+  t.setAttribute('xml:space','preserve')
+  t.textContent = String(value ?? '')
+  is.appendChild(t)
+  cell.appendChild(is)
+}
+
+function setNumberCell(doc, cell, value) {
+  clearCellChildren(cell)
+  const v = doc.createElementNS(cell.namespaceURI, 'v')
+  v.textContent = Number(value || 0).toString()
+  cell.appendChild(v)
+}
+
+function setTemplateCell(doc, sheetData, ref, value, fallbackRef) {
+  const cell = getOrCreateCell(doc, sheetData, ref, fallbackRef)
+  const num = typeof value === 'number' || (typeof value === 'string' && value.trim() !== '' && /^-?\d+(\.\d+)?$/.test(value.trim()))
+  if (num && /^[EG]\d+$/.test(ref)) setNumberCell(doc, cell, value)
+  else setInlineString(doc, cell, value)
+}
+
+function templateCellWrites(res = engine()) {
+  const rows = originalTableRows(res)
+  const writes = [
+    ['A2', `健身房名称：${document.getElementById('gymName')?.value || ''}`, 'A2'],
+    ['E2', `城市：${document.getElementById('gymCity')?.value || ''}`, 'E2'],
+    ['G2', res.grand.toFixed(2), 'G2'],
+    ['H2', `面积：${Math.round(S())}㎡；评级：${res.grade}`, 'H2'],
+  ]
+  rows.forEach((row, idx) => {
+    const excelRow = idx + 1
+    if (idx >= 3) {
+      if (row[6] !== '') writes.push([`G${excelRow}`, row[6], `G${Math.min(excelRow,48)}`])
+      if (row[7] !== '') writes.push([`H${excelRow}`, row[7], `H${Math.min(excelRow,48)}`])
+    }
+  })
+  return writes
+}
+
+function getJSZip() {
+  return globalThis.JSZip || (typeof window !== 'undefined' ? window.JSZip : null)
+}
+
+async function buildXlsxFromTemplate(file) {
+  const JSZipLib = getJSZip()
+  if (!JSZipLib) throw new Error('JSZip 未加载')
+  const zip = await JSZipLib.loadAsync(await file.arrayBuffer())
+  const sheetPath = 'xl/worksheets/sheet1.xml'
+  const sheetFile = zip.file(sheetPath)
+  if (!sheetFile) throw new Error('模板里没有找到 Sheet1')
+  const xmlText = await sheetFile.async('text')
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml')
+  const parseError = doc.getElementsByTagName('parsererror')[0]
+  if (parseError) throw new Error('无法读取模板工作表 XML')
+  const sheetData = doc.getElementsByTagName('sheetData')[0]
+  templateCellWrites().forEach(([ref, value, fallback]) => setTemplateCell(doc, sheetData, ref, value, fallback))
+  zip.file(sheetPath, new XMLSerializer().serializeToString(doc))
+  return await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
+}
+
+function downloadXlsxBlob(blob) {
+  const gym = ((document.getElementById('gymName')?.value || 'fitx-scorer').trim() || 'fitx-scorer').replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `${gym}-健身房评分表-${new Date().toISOString().slice(0,10)}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  URL.revokeObjectURL(a.href)
+  a.remove()
+}
+
+async function fetchBundledTemplate() {
+  const res = await fetch(`${XLSX_TEMPLATE_URL}?v=${Date.now()}`, {cache:'no-store'})
+  if (!res.ok) throw new Error(`模板文件读取失败 ${res.status}`)
+  return await res.blob()
+}
+
+async function exportOriginalFormatExcel() {
+  if (!getJSZip()) {
+    alert('未找到 jszip.min.js，将使用旧版兼容导出。')
+    exportOriginalFormatExcelFallback()
+    return
+  }
+  try {
+    const templateBlob = await fetchBundledTemplate()
+    const blob = await buildXlsxFromTemplate(templateBlob)
+    downloadXlsxBlob(blob)
+    return
+  } catch (err) {
+    console.warn('自动读取模板失败，改为手动选择模板：', err)
+  }
+  const input = document.getElementById('template-file')
+  if (!input) {
+    exportOriginalFormatExcelFallback()
+    return
+  }
+  input.value = ''
+  input.click()
+}
+
+function downloadText(filename, text, type='text/plain;charset=utf-8') {
+  const blob = new Blob([text], {type})
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  URL.revokeObjectURL(a.href)
+  a.remove()
+}
+
+async function copyScoreTableRow() {
+  const row = scoreTableRowTSV()
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(row)
+    else throw new Error('clipboard unavailable')
+    alert('已复制一行评分数据，可直接粘贴到表格中。')
+  } catch (e) {
+    const csv = '\ufeff' + TABLE_COLUMNS.join(',') + '\n' + scoreTableValues().map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')
+    const gym = ((document.getElementById('gymName')?.value || 'fitx-scorer').trim() || 'fitx-scorer').replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
+    downloadText(`${gym}-表格行-${new Date().toISOString().slice(0,10)}.csv`, csv, 'text/csv;charset=utf-8')
+    alert('浏览器未允许复制，已改为下载 CSV 表格行。')
+  }
+}
+
 function saveDraft() {
   if (isRestoring) return
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeDraft())) } catch (e) {}
@@ -1634,6 +2077,90 @@ function setNumber(id, value) {
 function replaceSet(target, values) {
   target.clear()
   ;(values || []).forEach(v => target.add(v))
+}
+
+function resetAppState() {
+  st.brand = null
+  st.maintenance = false
+  st.mix = null
+  st.pinCount = 0
+  st.plateCount = 0
+  st.cats = {}
+  CATS.forEach(c => st.cats[c.id] = false)
+  st.muscles = {chest:0,back:0,legs:0,shoulder:0,arms:0,core:0}
+  st.ropeCount = 0
+  st.ropeBonus = false
+  st.ropePenalty = false
+  st.smithCount = 0
+  st.smithQuality = false
+  st.sqRackCount = 0
+  st.sqRack = null
+  st.benchCount = 0
+  st.bench = null
+  st.dumbbellMax = 0
+  st.dumbbell = null
+  st.barbellBar = null
+  st.barbellPlate = null
+  st.adjBenchCount = 0
+  st.adjBench = null
+  st.deadliftCount = 0
+  st.deadlift = null
+  replaceSet(st.barbellBarTypes, [])
+  replaceSet(st.plateTypes, [])
+  replaceSet(st.advancedSet, [])
+  replaceSet(st.funcToolsSet, [])
+  st.cardio = {treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}
+  st.cardioFail = false
+  st.layout = {zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null}
+  st.styling = false
+  st.lockerStorage = 0
+  st.shower = 0
+  st.lockerDesign = 0
+  st.restroom = 0
+  replaceSet(lockerChecks.storage, [])
+  replaceSet(lockerChecks.shower, [])
+  replaceSet(lockerChecks.design, [])
+  replaceSet(lockerChecks.restroom, [])
+  st.scanner = false
+  st.access = false
+  st.aed = false
+  st.staffAttitude = null
+  st.upkeep = null
+  st.trainer = false
+  st.groupClass = false
+  st.freeTrainer = false
+  st.water = false
+  st.cafe = null
+  st.openHours = null
+  st.membership = false
+  st.priceMatch = null
+  st.specialMembership = false
+  st.transport = null
+  st.parking = null
+  st.amenities = null
+  st.catchment = null
+  st.hyrox = false
+  st.funcArea = false
+  st.pool = false
+  replaceSet(st.recovery, [])
+}
+
+function resetAll() {
+  isRestoring = true
+  try { localStorage.removeItem(STORAGE_KEY) } catch (e) {}
+  resetAppState()
+  const nameEl = document.getElementById('gymName')
+  const cityEl = document.getElementById('gymCity')
+  const areaEl = document.getElementById('gymArea')
+  if (nameEl) nameEl.value = ''
+  if (cityEl) cityEl.value = ''
+  if (areaEl) areaEl.value = '500'
+  syncDomFromState()
+  goSection('info', false)
+  update()
+  isRestoring = false
+  try { localStorage.removeItem(STORAGE_KEY) } catch (e) {}
+  window.scrollTo({top:0,behavior:'smooth'})
 }
 
 function syncDomFromState() {
@@ -1922,21 +2449,27 @@ function initUI() {
   if (exportBtn) exportBtn.addEventListener('click',()=>{
     const data = serializeDraft()
     const gym = (data.fields.gymName || 'fitx-scorer').trim().replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
-    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'})
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${gym || 'fitx-scorer'}-${new Date().toISOString().slice(0,10)}.json`
-    document.body.appendChild(a)
-    a.click()
-    URL.revokeObjectURL(a.href)
-    a.remove()
+    downloadText(`${gym || 'fitx-scorer'}-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(data,null,2), 'application/json;charset=utf-8')
   })
+  const exportXlsBtn = document.getElementById('btn-export-xls')
+  if (exportXlsBtn) exportXlsBtn.addEventListener('click', exportOriginalFormatExcel)
+  const templateInput = document.getElementById('template-file')
+  if (templateInput) templateInput.addEventListener('change', async ()=>{
+    const file = templateInput.files?.[0]
+    if (!file) return
+    try {
+      const blob = await buildXlsxFromTemplate(file)
+      downloadXlsxBlob(blob)
+    } catch (err) {
+      alert(`原表模板合成失败：${err.message || err}。将使用旧版兼容导出。`)
+      exportOriginalFormatExcelFallback()
+    }
+  })
+  const copyRowBtn = document.getElementById('btn-copy-row')
+  if (copyRowBtn) copyRowBtn.addEventListener('click', copyScoreTableRow)
   const clearBtn = document.getElementById('btn-clear')
   if (clearBtn) clearBtn.addEventListener('click',()=>{
-    if (confirm('清空当前评分并重新开始？')) {
-      try { localStorage.removeItem(STORAGE_KEY) } catch (e) {}
-      location.reload()
-    }
+    if (confirm('清空当前评分并重新开始？')) resetAll()
   })
 
   // muscle table — build once at init, update() only refreshes badges
