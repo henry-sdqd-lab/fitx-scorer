@@ -126,6 +126,9 @@
   .cat-grid .chk{text-align:center;}
   .mus-row{display:grid;grid-template-columns:70px 80px 1fr 76px;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px dashed var(--border);font-size:0.8rem;}
   .mus-row:last-child{border-bottom:none;}
+  .mus-detail{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:0.35rem;padding-left:145px;margin-top:-0.22rem;}
+  .mus-detail .chk{font-size:0.68rem;padding:0.25rem 0.52rem;min-height:0;}
+  .mus-detail-break{flex-basis:100%;height:0;}
 
   /* ---------- result panel ---------- */
   .result-panel{border-left:1px solid var(--border);padding:1.6rem 1.5rem 2.5rem;position:sticky;top:64px;height:calc(100vh - 64px);overflow-y:auto;background:var(--bg2);}
@@ -237,6 +240,8 @@
     .cat-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
     .cat-grid .chk{justify-content:center;text-align:center;}
     .mus-row{grid-template-columns:56px 76px 1fr 64px;gap:0.45rem;font-size:0.75rem;}
+    .mus-detail{padding-left:0;margin-top:0;gap:0.3rem;}
+    .mus-detail .chk{font-size:0.66rem;}
     .result-panel{margin:0.5rem 0.9rem 0;border:1px solid var(--border);border-top:2px solid var(--ice);border-radius:6px;padding:1rem 0.95rem 1.2rem;background:var(--bg2);}
     .grade-box{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'grade total' 'grade sub';align-items:center;text-align:left;gap:0 0.9rem;padding:0.95rem;}
     .grade-letter{grid-area:grade;font-size:3rem;}
@@ -966,6 +971,15 @@
     </div>
     <div class="final-metrics" id="final-metrics"></div>
   </div>
+  <div class="card">
+    <div class="card-title">数据操作</div>
+    <div class="app-actions">
+      <button class="action-btn" type="button" id="btn-export-final">导出评分JSON</button>
+      <button class="action-btn" type="button" id="btn-export-xls-final">导出原表Excel</button>
+      <button class="action-btn secondary" type="button" id="btn-copy-row-final">复制表格行</button>
+      <button class="action-btn secondary" type="button" id="btn-clear-final">清空重评</button>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -1036,6 +1050,7 @@ const st = {
   brand:null, maintenance:false, mix:null,
   pinCount:0, plateCount:0,
   cats:{}, muscles:{chest:0,back:0,legs:0,shoulder:0,arms:0,core:0},
+  muscleDetails:new Set(),
   ropeCount:0, ropeBonus:false, ropePenalty:false,
   smithCount:0, smithQuality:false,
   sqRackCount:0, sqRack:null,
@@ -1078,6 +1093,31 @@ const MUSCLES = [
   {id:'legs',l:'下肢',ref:7},{id:'shoulder',l:'肩部',ref:3},
   {id:'arms',l:'手臂',ref:2},{id:'core',l:'核心',ref:2},
 ]
+
+const MUSCLE_DETAILS = {
+  chest: [
+    ['upper','上胸'], ['middle','平推'], ['lower','下胸'], ['seatedPress','坐姿推'], ['supine','仰卧推'], ['fly','夹胸'],
+    ['pinLoaded','插片推'], ['plateLoaded','挂片推'],
+  ],
+  back: [
+    ['extension','全肩伸'], ['halfExtension','半肩伸'], ['adduction','肩内收'], ['front','正手拉'], ['reverse','反手拉'],
+    ['pinPulldown','插片下拉'], ['platePulldown','挂片下拉'], ['pinRow','插片后拉'], ['plateRow','挂片后拉'],
+  ],
+  legs: [
+    ['press','蹬举'], ['knee','膝主导'], ['hip','髋主导'], ['calf','小腿'],
+  ],
+  shoulder: [
+    ['pressPlate','挂片推'], ['pressPin','插片推'], ['abduction','外展'], ['rear','水平外展'],
+  ],
+  arms: [
+    ['bicepsHigh','高位二头'], ['bicepsMid','中位二头'], ['bicepsLow','低位二头'], ['tricepsDown','三头下压'], ['tricepsExtension','三头屈伸'],
+  ],
+  core: [
+    ['roman','罗马椅'], ['crunch','卷腹椅'], ['ghd','GHD'], ['abMachine','单独卷腹器械'],
+  ],
+}
+
+const MUSCLE_DETAIL_SECOND_ROW = new Set(['chest:pinLoaded','back:pinPulldown'])
 
 function muscleBase(g, s) {
   return Math.max(1, Math.floor(g.ref * s / 500))
@@ -1558,11 +1598,17 @@ function renderMuscleTable(s) {
   tbl.innerHTML = MUSCLES.map(g => {
     const {base, actual, pass} = coverage.details[g.id]
     const val = actual > 0 ? actual : ''
+    const details = (MUSCLE_DETAILS[g.id] || []).map(([id, label]) => {
+      const key = `${g.id}:${id}`
+      const br = MUSCLE_DETAIL_SECOND_ROW.has(key) ? '<span class="mus-detail-break" aria-hidden="true"></span>' : ''
+      return `${br}<div class="chk ${st.muscleDetails.has(key) ? 'on' : ''}" data-muscle-detail="${key}">${label}</div>`
+    }).join('')
     return `<div class="mus-row">
       <div style="color:var(--text-mid);font-size:0.8rem">${g.l}</div>
       <input type="number" class="num-input" style="width:65px" placeholder="0" min="0" data-muscle="${g.id}" value="${val}">
       <div style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim)" data-base="${g.id}">基准${base}台</div>
       <div class="num-badge ${pass?'badge-pass':actual>0?'badge-neutral':'badge-fail'}" data-badge="${g.id}">${pass?'✓达标':`${actual}/${base}`}</div>
+      <div class="mus-detail">${details}</div>
     </div>`
   }).join('')
   // attach listeners after build
@@ -1576,6 +1622,19 @@ function renderMuscleTable(s) {
     el.addEventListener('blur', () => {
       const v = parseInt(el.value, 10)
       if (isNaN(v) || v < 0) el.value = ''
+    })
+  })
+  tbl.querySelectorAll('[data-muscle-detail]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.muscleDetail
+      if (st.muscleDetails.has(key)) {
+        st.muscleDetails.delete(key)
+        el.classList.remove('on')
+      } else {
+        st.muscleDetails.add(key)
+        el.classList.add('on')
+      }
+      update()
     })
   })
 }
@@ -1634,6 +1693,7 @@ function serializeDraft() {
       ...st,
       cats: {...st.cats},
       muscles: {...st.muscles},
+      muscleDetails: [...st.muscleDetails],
       cardio: {...st.cardio},
       layout: {...st.layout},
       advancedSet: [...st.advancedSet],
@@ -1701,6 +1761,15 @@ function checkedTexts(containerId) {
   return [...document.querySelectorAll(`#${containerId} .chk.on`)].map(el => el.textContent.trim())
 }
 
+function muscleDetailNotes() {
+  return MUSCLES.map(g => {
+    const labels = (MUSCLE_DETAILS[g.id] || [])
+      .filter(([id]) => st.muscleDetails.has(`${g.id}:${id}`))
+      .map(([, label]) => label)
+    return labels.length ? `${g.l}：${labels.join('、')}` : ''
+  }).filter(Boolean).join('；')
+}
+
 function yesNo(v) {
   return v ? '是' : '否'
 }
@@ -1714,6 +1783,7 @@ function originalTableRows(res = engine()) {
   const totalCoeff = coeffReady ? (res.brandC * res.mixC * res.ratioC).toFixed(3) : '未完善'
   const cats = CATS.filter(c => st.cats[c.id]).map(c => c.l).join('、') || '未勾选'
   const muscleNote = MUSCLES.map(g => `${g.l}${st.muscles[g.id] || 0}/${muscleBase(g, S())}`).join('，')
+  const muscleDetails = muscleDetailNotes()
   const barTypes = checkedTexts('barbell-bar-types').join('、') || '未勾选'
   const barEls = [...document.querySelectorAll('#barbell-bar-types .chk.on')]
   const specialBars = barEls.filter(el => SPECIAL_BAR_IDS.has(el.dataset.id)).map(el => el.textContent.trim()).join('、') || '未达标'
@@ -1751,7 +1821,7 @@ function originalTableRows(res = engine()) {
     ['','','0.28','16大类逐类计分，每类0.5分；机器存在但不可用/缺件计0',8,'',res.catScore,`已勾选：${cats}；覆盖分 ${res.catScore.toFixed(1)}/8`],
     ['','','','','','','',''],
     ['','','','','','','',''],
-    ['','','','6组肌群同肌群多角度/多轨迹覆盖：胸、背、腿、肩、手臂、腹部',20,'',res.covScore,`部位台数：${muscleNote}；部位覆盖 ${res.covEarned}/${res.covMax}，得分 ${res.covScore.toFixed(1)}/20`],
+    ['','','','6组肌群同肌群多角度/多轨迹覆盖：胸、背、腿、肩、手臂、腹部',20,'',res.covScore,scoreNoteParts([`部位台数：${muscleNote}`, muscleDetails ? `角度明细：${muscleDetails}` : '', `部位覆盖 ${res.covEarned}/${res.covMax}，得分 ${res.covScore.toFixed(1)}/20`])],
     ['','','','','','','',''],
     ['','','','','','','',''],
     ['','自由器械','0.22','绳动器械：多站位/小龙门/八爪鱼',4,'',res.rope,`自由器械总分：${res.freeFull.toFixed(2)}；绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
@@ -2088,6 +2158,7 @@ function resetAppState() {
   st.cats = {}
   CATS.forEach(c => st.cats[c.id] = false)
   st.muscles = {chest:0,back:0,legs:0,shoulder:0,arms:0,core:0}
+  replaceSet(st.muscleDetails, [])
   st.ropeCount = 0
   st.ropeBonus = false
   st.ropePenalty = false
@@ -2171,6 +2242,7 @@ function syncDomFromState() {
   setNumber('plate-count', st.plateCount)
   document.querySelectorAll('#cat-grid .chk').forEach(el => el.classList.toggle('on', !!st.cats[el.dataset.id]))
   document.querySelectorAll('input[data-muscle]').forEach(el => { el.value = st.muscles[el.dataset.muscle] || 0 })
+  document.querySelectorAll('[data-muscle-detail]').forEach(el => el.classList.toggle('on', st.muscleDetails.has(el.dataset.muscleDetail)))
 
   setNumber('rope-count', st.ropeCount)
   applyToggle('tog-rope-bonus', st.ropeBonus)
@@ -2250,12 +2322,13 @@ function restoreDraft() {
   const savedState = draft.state || {}
   const {
     cats, muscles, cardio, layout,
-    advancedSet, funcToolsSet, barbellBarTypes, plateTypes, recovery,
+    muscleDetails, advancedSet, funcToolsSet, barbellBarTypes, plateTypes, recovery,
     ...plainState
   } = savedState
   Object.assign(st, plainState)
   st.cats = {...CATS.reduce((acc,c)=>({...acc,[c.id]:false}),{}), ...(cats || {})}
   st.muscles = {...{chest:0,back:0,legs:0,shoulder:0,arms:0,core:0}, ...(muscles || {})}
+  replaceSet(st.muscleDetails, muscleDetails)
   st.cardio = {...{treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}, ...(cardio || {})}
   st.layout = {...st.layout, ...(layout || {})}
   replaceSet(st.advancedSet, advancedSet)
@@ -2445,14 +2518,19 @@ function initUI() {
     if (idx < SECTION_FLOW.length - 1) goSection(SECTION_FLOW[idx+1])
   })
 
-  const exportBtn = document.getElementById('btn-export')
-  if (exportBtn) exportBtn.addEventListener('click',()=>{
+  function exportJsonDraft() {
     const data = serializeDraft()
     const gym = (data.fields.gymName || 'fitx-scorer').trim().replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
     downloadText(`${gym || 'fitx-scorer'}-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(data,null,2), 'application/json;charset=utf-8')
+  }
+  ;['btn-export','btn-export-final'].forEach(id => {
+    const btn = document.getElementById(id)
+    if (btn) btn.addEventListener('click', exportJsonDraft)
   })
-  const exportXlsBtn = document.getElementById('btn-export-xls')
-  if (exportXlsBtn) exportXlsBtn.addEventListener('click', exportOriginalFormatExcel)
+  ;['btn-export-xls','btn-export-xls-final'].forEach(id => {
+    const btn = document.getElementById(id)
+    if (btn) btn.addEventListener('click', exportOriginalFormatExcel)
+  })
   const templateInput = document.getElementById('template-file')
   if (templateInput) templateInput.addEventListener('change', async ()=>{
     const file = templateInput.files?.[0]
@@ -2465,11 +2543,15 @@ function initUI() {
       exportOriginalFormatExcelFallback()
     }
   })
-  const copyRowBtn = document.getElementById('btn-copy-row')
-  if (copyRowBtn) copyRowBtn.addEventListener('click', copyScoreTableRow)
-  const clearBtn = document.getElementById('btn-clear')
-  if (clearBtn) clearBtn.addEventListener('click',()=>{
-    if (confirm('清空当前评分并重新开始？')) resetAll()
+  ;['btn-copy-row','btn-copy-row-final'].forEach(id => {
+    const btn = document.getElementById(id)
+    if (btn) btn.addEventListener('click', copyScoreTableRow)
+  })
+  ;['btn-clear','btn-clear-final'].forEach(id => {
+    const btn = document.getElementById(id)
+    if (btn) btn.addEventListener('click',()=>{
+      if (confirm('清空当前评分并重新开始？')) resetAll()
+    })
   })
 
   // muscle table — build once at init, update() only refreshes badges
