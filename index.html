@@ -98,6 +98,8 @@
   .opt{padding:0.36rem 0.75rem;border-radius:3px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-size:0.77rem;color:var(--text-mid);transition:all 0.12s;user-select:none;line-height:1.45;}
   .opt:hover{border-color:var(--ice);color:var(--ice);}
   .opt.sel{background:var(--ice);border-color:var(--ice);color:var(--bg);font-weight:500;}
+  .opts.required-missing .opt{border-style:dashed;border-color:rgba(200,16,46,.45);}
+  .required-mark{font-family:var(--mono);font-size:0.6rem;color:var(--red);background:rgba(200,16,46,.08);border:1px solid rgba(200,16,46,.35);padding:1px 6px;border-radius:2px;}
   .checks{display:flex;flex-wrap:wrap;gap:0.45rem;}
   .chk{padding:0.36rem 0.75rem;border-radius:3px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-size:0.77rem;color:var(--text-mid);transition:all 0.12s;user-select:none;}
   .chk:hover{border-color:var(--ice);color:var(--ice);}
@@ -112,6 +114,7 @@
   .tog::after{content:'';position:absolute;width:15px;height:15px;background:var(--text-dim);border-radius:50%;top:2px;left:2px;transition:all 0.18s;}
   .tog.on{background:var(--ice);border-color:var(--ice);}
   .tog.on::after{left:19px;background:var(--bg);}
+  .tog-row.hidden{display:none;}
 
   /* fields */
   .field{margin-bottom:1rem;}.field:last-child{margin-bottom:0;}
@@ -335,9 +338,7 @@
   <div class="card">
     <div class="card-title">数据操作</div>
     <div class="app-actions">
-      <button class="action-btn" type="button" id="btn-export">导出评分JSON</button>
-      <button class="action-btn" type="button" id="btn-export-xls">导出原表Excel</button>
-      <button class="action-btn secondary" type="button" id="btn-copy-row">复制表格行</button>
+      <button class="action-btn" type="button" id="btn-import-xls">导入原表Excel</button>
       <button class="action-btn secondary" type="button" id="btn-clear">清空重评</button>
     </div>
   </div>
@@ -424,46 +425,50 @@
   <div class="card">
     <div class="card-title">史密斯机（满分 1）</div>
     <div class="card-hint">基准台数 = floor(S/500) = <span id="smith-base-hint">—</span><br>
-    达标条件：台数≥基准，且高质量保养、含斜向+直线两种类型</div>
+    达标条件：台数≥基准，且质量达标</div>
     <div class="num-row">
       <div class="num-label">实际台数</div>
       <input type="number" class="num-input" id="smith-count" value="0" min="0">
       <span class="num-badge badge-neutral" id="smith-badge">未达标</span>
     </div>
     <div class="tog-row" style="margin-top:0.5rem">
-      <span>质量达标（高质量保养，含斜向+直线两种类型）</span>
+      <span>质量是否达标</span>
       <div class="tog" id="tog-smith-quality"></div>
+    </div>
+    <div class="tog-row hidden" id="smith-type-row">
+      <span>斜向 + 直线两种类型都有<small class="note">仅史密斯台数 ≥2 时记录</small></span>
+      <div class="tog" id="tog-smith-dual-types"></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">力量区基础项（每项 0/1/2 分，7项满分 14，全满额外 +1）</div>
+    <div class="card-title">力量区基础项（数量比例分 + 状态分档，7项满分 14，全满额外 +1）</div>
 
     <!-- 深蹲架 -->
     <div style="border-bottom:1px solid var(--border);padding:0.75rem 0;">
       <div class="num-row" style="border:none;padding:0;margin-bottom:0.5rem">
-        <div class="num-label">①深蹲架/综合架<small>基准 = floor(S/300) = <span id="sqrack-base">—</span> 台</small></div>
+        <div class="num-label">①深蹲架/综合架<small>基准 = max(1, floor(S/300)) = <span id="sqrack-base">—</span> 台</small></div>
         <input type="number" class="num-input" id="sqrack-count" value="0" min="0">
         <span class="num-badge badge-neutral" id="sqrack-badge">—</span>
       </div>
       <div class="opts" id="sqrack-opts">
-        <div class="opt" data-v="0">数量不达标</div>
-        <div class="opt" data-v="1">达标，状态一般</div>
-        <div class="opt" data-v="2">达标且稳定，综合架功能完整</div>
+        <div class="opt" data-v="0">不可用/状态差</div>
+        <div class="opt" data-v="1">状态一般</div>
+        <div class="opt" data-v="2">稳定，综合架功能完整</div>
       </div>
     </div>
 
     <!-- 卧推台 -->
     <div style="border-bottom:1px solid var(--border);padding:0.75rem 0;">
       <div class="num-row" style="border:none;padding:0;margin-bottom:0.5rem">
-        <div class="num-label">②卧推台<small>基准 = min(6, floor(S/300)) = <span id="bench-base">—</span> 台</small></div>
+        <div class="num-label">②卧推台<small>基准 = max(1, min(6, floor(S/300))) = <span id="bench-base">—</span> 台</small></div>
         <input type="number" class="num-input" id="bench-count" value="0" min="0">
         <span class="num-badge badge-neutral" id="bench-badge">—</span>
       </div>
       <div class="opts" id="bench-opts">
-        <div class="opt" data-v="0">数量不达标</div>
-        <div class="opt" data-v="1">达标，普通架</div>
-        <div class="opt" data-v="2">达标，有赛级架或安全保护架</div>
+        <div class="opt" data-v="0">不可用/状态差</div>
+        <div class="opt" data-v="1">普通架</div>
+        <div class="opt" data-v="2">有赛级架或安全保护架</div>
       </div>
     </div>
 
@@ -476,7 +481,7 @@
           <input type="number" class="num-input" id="dumbbell-max" value="0" min="0" step="5">
         </div>
         <div style="flex:1">
-          <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem">密度与数量</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem">密度与数量 <span class="required-mark">必选</span></div>
           <div class="opts" id="dumbbell-opts">
             <div class="opt" data-v="0">严重断档/数量极少</div>
             <div class="opt" data-v="1">基本够用，有断档</div>
@@ -502,6 +507,7 @@
         <div class="chk" data-id="buffalo">水牛杠</div>
       </div>
       <div class="opts" id="barbell-bar-opts" style="margin-top:0.5rem">
+        <div style="flex-basis:100%;font-size:0.72rem;color:var(--text-dim)">数量与状态 <span class="required-mark">必选</span></div>
         <div class="opt" data-v="0">数量不足/状态差</div>
         <div class="opt" data-v="1">基础齐全，状态一般</div>
         <div class="opt" data-v="2">齐全且状态良好</div>
@@ -519,6 +525,7 @@
         <div class="chk" data-id="bumper">橡胶地板片</div>
       </div>
       <div class="opts" id="plate-opts" style="margin-top:0.5rem">
+        <div style="flex-basis:100%;font-size:0.72rem;color:var(--text-dim)">配重完整度 <span class="required-mark">必选</span></div>
         <div class="opt" data-v="0">配重不完整/严重混用</div>
         <div class="opt" data-v="1">够用，力量区有些混用</div>
         <div class="opt" data-v="2">配重完整，力量区专用片为主</div>
@@ -533,17 +540,19 @@
         <span class="num-badge badge-neutral" id="adj-bench-badge">—</span>
       </div>
       <div class="opts" id="adj-bench-opts">
-        <div class="opt" data-v="0">数量不足</div>
-        <div class="opt" data-v="1">数量够，凳身有晃动</div>
-        <div class="opt" data-v="2">数量够且稳定</div>
+        <div style="flex-basis:100%;font-size:0.72rem;color:var(--text-dim)">稳定性 <span class="required-mark">必选</span></div>
+        <div class="opt" data-v="0">不可用/状态差</div>
+        <div class="opt" data-v="1">凳身有晃动</div>
+        <div class="opt" data-v="2">稳定</div>
       </div>
     </div>
 
     <!-- 硬拉台 -->
     <div style="padding:0.75rem 0;">
       <div class="num-row" style="border:none;padding:0;margin-bottom:0.5rem">
-        <div class="num-label">⑦硬拉/举重平台<small>有专用台或缓冲地面覆盖力量区</small></div>
+        <div class="num-label">⑦硬拉/举重平台<small>基准 = max(1, floor(S/500)) = <span id="deadlift-base">—</span> 个</small></div>
         <input type="number" class="num-input" id="deadlift-count" value="0" min="0">
+        <span class="num-badge badge-neutral" id="deadlift-badge">—</span>
       </div>
       <div class="opts" id="deadlift-opts">
         <div class="opt" data-v="0">无专用台/无缓冲地面</div>
@@ -976,7 +985,7 @@
     <div class="app-actions">
       <button class="action-btn" type="button" id="btn-export-final">导出评分JSON</button>
       <button class="action-btn" type="button" id="btn-export-xls-final">导出原表Excel</button>
-      <button class="action-btn secondary" type="button" id="btn-copy-row-final">复制表格行</button>
+      <button class="action-btn" type="button" id="btn-export-png-final">导出末页PNG</button>
       <button class="action-btn secondary" type="button" id="btn-clear-final">清空重评</button>
     </div>
   </div>
@@ -1016,6 +1025,7 @@
   <button type="button" id="mobile-next">下一项</button>
 </div>
 <input type="file" id="template-file" accept=".xlsx" style="display:none">
+<input type="file" id="import-file" accept=".xlsx" style="display:none">
 
 <script src="jszip.min.js"></script>
 <script>
@@ -1053,7 +1063,7 @@ const st = {
   cats:{}, muscles:{chest:0,back:0,legs:0,shoulder:0,arms:0,core:0},
   muscleDetails:new Set(),
   ropeCount:0, ropeBonus:false, ropePenalty:false,
-  smithCount:0, smithQuality:false,
+  smithCount:0, smithQuality:false, smithDualTypes:false,
   sqRackCount:0, sqRack:null,
   benchCount:0, bench:null,
   dumbbellMax:0, dumbbell:null,
@@ -1149,6 +1159,19 @@ function adjBenchBase(s) {
   return Math.max(4, 4 + Math.floor((s - 500) / 500) * 2)
 }
 
+function deadliftBase(s) {
+  return Math.max(1, Math.floor(s / 500))
+}
+
+function countQualityScore(actual, base, quality) {
+  const n = Math.max(0, Number(actual) || 0)
+  const b = Math.max(1, Number(base) || 1)
+  if (quality === null || quality === undefined) return 0
+  const baseScore = Math.min(2, (n / b) * 2)
+  const cap = Math.max(0, Math.min(2, Number(quality) || 0))
+  return Math.min(baseScore, cap)
+}
+
 // func tools score: 0->0, 1-3->0.5, 4-5->1, 6-7->1.5, >=8->2
 function funcToolsScore(n) {
   if (n === 0) return 0
@@ -1193,8 +1216,20 @@ function engine() {
   const smithOk = st.smithCount >= smithBase && st.smithQuality
   const smith = smithOk ? 1 : 0
 
-  // basic — null means unset = 0
-  const basicVals = [st.sqRack, st.bench, st.dumbbell, st.barbellBar, st.barbellPlate, st.adjBench, st.deadlift].map(v => v ?? 0)
+  const sqRackBase = Math.max(1, Math.floor(s / 300))
+  const benchBase = Math.max(1, Math.min(6, Math.floor(s / 300)))
+  const adjBase = adjBenchBase(s)
+  const dlBase = deadliftBase(s)
+  const basicDetail = {
+    sqRack: countQualityScore(st.sqRackCount, sqRackBase, st.sqRack),
+    bench: countQualityScore(st.benchCount, benchBase, st.bench),
+    dumbbell: st.dumbbell ?? 0,
+    barbellBar: st.barbellBar ?? 0,
+    barbellPlate: st.barbellPlate ?? 0,
+    adjBench: countQualityScore(st.adjBenchCount, adjBase, st.adjBench),
+    deadlift: countQualityScore(st.deadliftCount, dlBase, st.deadlift),
+  }
+  const basicVals = Object.values(basicDetail)
   const basicSum = basicVals.reduce((a,b)=>a+b,0)
   const allSet = [st.sqRack, st.bench, st.dumbbell, st.barbellBar, st.barbellPlate, st.adjBench, st.deadlift].every(v => v !== null)
   const allMaxBonus = allSet && basicVals.every(v=>v===2) ? 1 : 0
@@ -1266,13 +1301,13 @@ function engine() {
     grand, baseScore, bonusTotal, grade,
     brandC, mixC, ratioC, r, pin, plate,
     catScore, covScore, covEarned:coverage.earned, covMax:coverage.max, fixedRaw,
-    rope, smith, smithOk, basicSum, allMaxBonus, advScore, advCount, adv1Auto, adv1SpecialCount, freeFull,
+    rope, smith, smithOk, basicDetail, basicSum, allMaxBonus, advScore, advCount, adv1Auto, adv1SpecialCount, freeFull,
     cardioTotal, cardioTypes, cardioBase, cardioScore,
     equipBase, layoutRaw, lockerRaw, envBase, ftScore,
     svcBase, aedBonus, groupBonus, cafeBonus, specialBonus,
     transportRaw, lifestyleRaw, surroundBase,
     stylingBonus, recoveryBonus, hyroxBonus, funcAreaBonus, poolBonus,
-    ropeBase, smithBase: Math.floor(s/500),
+    ropeBase, smithBase: Math.floor(s/500), sqRackBase, benchBase, adjBase, deadliftBase: dlBase,
   }
 }
 
@@ -1293,9 +1328,10 @@ function update() {
     `绳动基准: floor(${s}/100) = ${Math.floor(s/100)}`,
     `史密斯基准: floor(${s}/500) = ${Math.floor(s/500)}`,
     `有氧基准: max(5,floor(${s}/100)) = ${Math.max(5,Math.floor(s/100))}`,
-    `深蹲架基准: floor(${s}/300) = ${Math.floor(s/300)}`,
-    `卧推台基准: min(6,floor(${s}/300)) = ${Math.min(6,Math.floor(s/300))}`,
+    `深蹲架基准: max(1,floor(${s}/300)) = ${res.sqRackBase}`,
+    `卧推台基准: max(1,min(6,floor(${s}/300))) = ${res.benchBase}`,
     `可调凳基准: ${adjBenchBase(s)}台 (500㎡→4, 1000㎡→6)`,
+    `硬拉台基准: max(1,floor(${s}/500)) = ${res.deadliftBase}`,
   ].join('<br>')
 
   // nav
@@ -1332,24 +1368,44 @@ function update() {
   // smith badge
   const smb = document.getElementById('smith-badge')
   if(smb){ smb.textContent=res.smithOk?'达标 1分':'未达标 0分'; smb.className='num-badge '+(res.smithOk?'badge-pass':'badge-fail') }
+  const smithTypeRow = document.getElementById('smith-type-row')
+  if (smithTypeRow) smithTypeRow.classList.toggle('hidden', st.smithCount < 2)
+  if (st.smithCount < 2 && st.smithDualTypes) {
+    st.smithDualTypes = false
+    applyToggle('tog-smith-dual-types', false)
+  }
 
   // sqrack
-  const sqBase = Math.floor(s/300)
+  const sqBase = res.sqRackBase
   const sqEl = document.getElementById('sqrack-base'); if(sqEl) sqEl.textContent=sqBase
   const sqBadge = document.getElementById('sqrack-badge')
-  if(sqBadge){ const ok=st.sqRackCount>=sqBase; sqBadge.textContent=ok?'达标':'不足'; sqBadge.className='num-badge '+(ok?'badge-pass':'badge-fail') }
+  if(sqBadge){ const v=res.basicDetail.sqRack; const ok=v>=2; sqBadge.textContent=`${v.toFixed(1)}/2`; sqBadge.className='num-badge '+(ok?'badge-pass':v>0?'badge-neutral':'badge-fail') }
 
   // bench
-  const benchBase = Math.min(6,Math.floor(s/300))
+  const benchBase = res.benchBase
   const benchBaseEl = document.getElementById('bench-base'); if(benchBaseEl) benchBaseEl.textContent=benchBase
   const benchBadge = document.getElementById('bench-badge')
-  if(benchBadge){ const ok=st.benchCount>=benchBase; benchBadge.textContent=ok?'达标':'不足'; benchBadge.className='num-badge '+(ok?'badge-pass':'badge-fail') }
+  if(benchBadge){ const v=res.basicDetail.bench; const ok=v>=2; benchBadge.textContent=`${v.toFixed(1)}/2`; benchBadge.className='num-badge '+(ok?'badge-pass':v>0?'badge-neutral':'badge-fail') }
 
   // adj bench
-  const adjBase = adjBenchBase(s)
+  const adjBase = res.adjBase
   const adjBaseEl = document.getElementById('bench-adj-base'); if(adjBaseEl) adjBaseEl.textContent=adjBase
   const adjBadge = document.getElementById('adj-bench-badge')
-  if(adjBadge){ const ok=st.adjBenchCount>=adjBase; adjBadge.textContent=ok?'达标':'不足'; adjBadge.className='num-badge '+(ok?'badge-pass':'badge-fail') }
+  if(adjBadge){ const v=res.basicDetail.adjBench; const ok=v>=2; adjBadge.textContent=`${v.toFixed(1)}/2`; adjBadge.className='num-badge '+(ok?'badge-pass':v>0?'badge-neutral':'badge-fail') }
+
+  const dlBaseEl = document.getElementById('deadlift-base'); if(dlBaseEl) dlBaseEl.textContent=res.deadliftBase
+  const dlBadge = document.getElementById('deadlift-badge')
+  if(dlBadge){ const v=res.basicDetail.deadlift; const ok=v>=2; dlBadge.textContent=`${v.toFixed(1)}/2`; dlBadge.className='num-badge '+(ok?'badge-pass':v>0?'badge-neutral':'badge-fail') }
+
+  ;[
+    ['dumbbell-opts', st.dumbbell],
+    ['barbell-bar-opts', st.barbellBar],
+    ['plate-opts', st.barbellPlate],
+    ['adj-bench-opts', st.adjBench],
+  ].forEach(([id, value]) => {
+    const el = document.getElementById(id)
+    if (el) el.classList.toggle('required-missing', value === null || value === undefined)
+  })
 
   // all basic bonus hint
   const abh = document.getElementById('all-basic-bonus-hint')
@@ -1827,9 +1883,9 @@ function originalTableRows(res = engine()) {
     ['','','','','','','',''],
     ['','自由器械','0.22','绳动器械：多站位/小龙门/八爪鱼',4,'',res.rope,`自由器械总分：${res.freeFull.toFixed(2)}；绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
     ['','','','总站位数量≥S/100；配件丰富升档，故障降档','','','',`绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
-    ['','','','史密斯：高质量且保养稳定；数量=S/500',1,'',res.smith,`史密斯${st.smithCount}台，基准${res.smithBase}，质量达标：${yesNo(st.smithQuality)}，得分${res.smith}`],
-    ['','','','力量区基础项：深蹲架/卧推台/哑铃/杠铃杆/杠铃片/可调凳/硬拉平台',15,'',res.basicSum + res.allMaxBonus,scoreNoteParts([`深蹲架${st.sqRackCount}台-${selectedText('#sqrack-opts .opt.sel')}`,`卧推台${st.benchCount}台-${selectedText('#bench-opts .opt.sel')}`,`哑铃最大${st.dumbbellMax}kg-${selectedText('#dumbbell-opts .opt.sel')}`,`杠铃杆-${selectedText('#barbell-bar-opts .opt.sel')}；杆型：${barTypes}`,`杠铃片-${selectedText('#plate-opts .opt.sel')}；片型：${plateTypes}`,`可调凳${st.adjBenchCount}台-${selectedText('#adj-bench-opts .opt.sel')}`,`硬拉/举重平台${st.deadliftCount}个-${selectedText('#deadlift-opts .opt.sel')}`,`基础项${res.basicSum.toFixed(1)}，全满加分${res.allMaxBonus}`])],
-    ['','','','数量基准：综合架S/300；卧推架S/300上限6；可调凳S/100且基础值4','','','',''],
+    ['','','','史密斯：质量是否达标；数量=S/500',1,'',res.smith,`史密斯${st.smithCount}台，基准${res.smithBase}，质量达标：${yesNo(st.smithQuality)}，两种类型：${st.smithCount >= 2 ? yesNo(st.smithDualTypes) : '台数<2未记录'}，得分${res.smith}`],
+    ['','','','力量区基础项：深蹲架/卧推台/哑铃/杠铃杆/杠铃片/可调凳/硬拉平台',15,'',res.basicSum + res.allMaxBonus,scoreNoteParts([`深蹲架${st.sqRackCount}台/基准${res.sqRackBase}-${selectedText('#sqrack-opts .opt.sel')}，得分${res.basicDetail.sqRack.toFixed(1)}`,`卧推台${st.benchCount}台/基准${res.benchBase}-${selectedText('#bench-opts .opt.sel')}，得分${res.basicDetail.bench.toFixed(1)}`,`哑铃最大${st.dumbbellMax}kg-${selectedText('#dumbbell-opts .opt.sel')}，得分${res.basicDetail.dumbbell.toFixed(1)}`,`杠铃杆-${selectedText('#barbell-bar-opts .opt.sel')}，得分${res.basicDetail.barbellBar.toFixed(1)}；杆型：${barTypes}`,`杠铃片-${selectedText('#plate-opts .opt.sel')}，得分${res.basicDetail.barbellPlate.toFixed(1)}；片型：${plateTypes}`,`可调凳${st.adjBenchCount}台/基准${res.adjBase}-${selectedText('#adj-bench-opts .opt.sel')}，得分${res.basicDetail.adjBench.toFixed(1)}`,`硬拉/举重平台${st.deadliftCount}个/基准${res.deadliftBase}-${selectedText('#deadlift-opts .opt.sel')}，得分${res.basicDetail.deadlift.toFixed(1)}`,`基础项${res.basicSum.toFixed(1)}，全满加分${res.allMaxBonus}`])],
+    ['','','','数量基准：综合架max(1,S/300)；卧推架max(1,S/300上限6)；可调凳S/100且基础值4；硬拉台max(1,S/500)','','','',''],
     ['','','','力量区深度项：专项杠铃≥2种；赛级卧推凳/钢片架；附件齐全；硬拉台工艺/多套哑铃',2,'',res.advScore,`专项杠铃：${specialBars}（${res.adv1SpecialCount}/2）；赛级卧推/钢片架：${yesNo(st.advancedSet.has('adv2'))}；附件齐全：${yesNo(st.advancedSet.has('adv3'))}；硬拉台/多套哑铃：${yesNo(st.advancedSet.has('adv4'))}；深度分${res.advScore.toFixed(1)}`],
     ['','有氧器械','0.05','数量=S/100，基础值5；类型至少含跑步机/椭圆机/楼梯机/单车中的三类',5,'',res.cardioScore.toFixed(2),cardioNote],
     ['','','','数量≤3台或多台故障→1；数量略少且类型≤2→2；高于基础且类型≥3→3-4；1.5倍且类型≥4→5','','','',''],
@@ -2108,6 +2164,240 @@ async function exportOriginalFormatExcel() {
   input.click()
 }
 
+async function readXlsxCells(file) {
+  const JSZipLib = getJSZip()
+  if (!JSZipLib) throw new Error('JSZip 未加载')
+  const zip = await JSZipLib.loadAsync(await file.arrayBuffer())
+  const shared = []
+  const sharedFile = zip.file('xl/sharedStrings.xml')
+  if (sharedFile) {
+    const sharedDoc = new DOMParser().parseFromString(await sharedFile.async('text'), 'application/xml')
+    ;[...sharedDoc.getElementsByTagName('si')].forEach(si => {
+      shared.push([...si.getElementsByTagName('t')].map(t => t.textContent || '').join(''))
+    })
+  }
+  const sheetFile = zip.file('xl/worksheets/sheet1.xml')
+  if (!sheetFile) throw new Error('没有找到 Sheet1')
+  const doc = new DOMParser().parseFromString(await sheetFile.async('text'), 'application/xml')
+  const cells = {}
+  ;[...doc.getElementsByTagName('c')].forEach(c => {
+    const ref = c.getAttribute('r')
+    if (!ref) return
+    let value = ''
+    const type = c.getAttribute('t')
+    if (type === 'inlineStr') {
+      value = [...c.getElementsByTagName('t')].map(t => t.textContent || '').join('')
+    } else {
+      const raw = c.getElementsByTagName('v')[0]?.textContent || ''
+      value = type === 's' ? (shared[Number(raw)] || '') : raw
+    }
+    cells[ref] = value
+  })
+  return cells
+}
+
+function notePart(text, label) {
+  const s = String(text || '')
+  const idx = s.indexOf(label)
+  if (idx < 0) return ''
+  return s.slice(idx + label.length).split(/[；;]/)[0].trim()
+}
+
+function noteBetween(text, startLabel, endLabel) {
+  const s = String(text || '')
+  const start = s.indexOf(startLabel)
+  if (start < 0) return ''
+  const body = s.slice(start + startLabel.length)
+  const end = body.indexOf(endLabel)
+  return (end >= 0 ? body.slice(0, end) : body).trim()
+}
+
+function parseBoolText(v) {
+  return String(v || '').trim().startsWith('是')
+}
+
+function parseIntMatch(text, re, fallback = 0) {
+  const m = String(text || '').match(re)
+  return m ? parseInt(m[1], 10) : fallback
+}
+
+function normalizeChoiceText(v) {
+  return String(v || '').replace(/[✓✗]/g, '').replace(/\s+/g, '').trim()
+}
+
+function optionValueFromText(containerId, text) {
+  const needle = normalizeChoiceText(text)
+  if (!needle || needle.includes('未选')) return null
+  const opts = [...document.querySelectorAll(`#${containerId} .opt`)]
+  const found = opts.find(el => {
+    const label = normalizeChoiceText(el.textContent)
+    return label === needle || needle.includes(label) || label.includes(needle)
+  })
+  return found ? parseFloat(found.dataset.v) : null
+}
+
+function setOptState(containerId, text, assign) {
+  const value = optionValueFromText(containerId, text)
+  if (value !== null && !Number.isNaN(value)) assign(value)
+}
+
+function selectedLabelsToSet(containerId, targetSet, text) {
+  const src = normalizeChoiceText(text)
+  targetSet.clear()
+  if (!src || src.includes('未勾选')) return
+  document.querySelectorAll(`#${containerId} .chk`).forEach(el => {
+    const label = normalizeChoiceText(el.textContent)
+    if (label && src.includes(label)) targetSet.add(el.dataset.id)
+  })
+}
+
+function parseOptionAfterDash(text, re) {
+  const m = String(text || '').match(re)
+  return m ? m[1].trim() : ''
+}
+
+function importCatsFromText(text) {
+  const src = normalizeChoiceText(text)
+  CATS.forEach(c => {
+    const label = normalizeChoiceText(c.l)
+    st.cats[c.id] = !!label && src.includes(label)
+  })
+}
+
+function importMuscleDetailsFromText(text) {
+  const note = String(text || '')
+  st.muscleDetails.clear()
+  MUSCLES.forEach(g => {
+    const m = note.match(new RegExp(`${g.l}：([^；]+)`))
+    const segment = normalizeChoiceText(m ? m[1] : '')
+    ;(MUSCLE_DETAILS[g.id] || []).forEach(([id, label]) => {
+      if (segment.includes(normalizeChoiceText(label))) st.muscleDetails.add(`${g.id}:${id}`)
+    })
+  })
+}
+
+function importCheckSection(containerId, targetSet, text, prefix) {
+  selectedLabelsToSet(containerId, targetSet, prefix ? notePart(text, prefix) : text)
+}
+
+async function importOriginalFormatExcel(file) {
+  const cells = await readXlsxCells(file)
+  resetAppState()
+
+  const name = (cells.D2 || '').trim() || notePart(cells.A2, '健身房名称：')
+  const city = (cells.F2 || '').trim() || notePart(cells.E2, '城市：')
+  const area = parseIntMatch(cells.H2, /面积：?(\d+)/, parseInt(document.getElementById('gymArea')?.value || '500', 10))
+  const nameEl = document.getElementById('gymName')
+  const cityEl = document.getElementById('gymCity')
+  const areaEl = document.getElementById('gymArea')
+  if (nameEl) nameEl.value = name
+  if (cityEl) cityEl.value = city
+  if (areaEl && area) areaEl.value = area
+
+  setOptState('brand-opts', notePart(cells.H4, '品牌：'), v => { st.brand = v })
+  st.maintenance = parseBoolText(notePart(cells.H4, '维护差：'))
+  setOptState('mix-opts', notePart(cells.H5, '搭配：'), v => { st.mix = v })
+  st.pinCount = parseIntMatch(cells.H7, /插片(\d+)台/, st.pinCount)
+  st.plateCount = parseIntMatch(cells.H7, /挂片(\d+)台/, st.plateCount)
+  importCatsFromText(notePart(cells.H8, '已勾选：'))
+
+  MUSCLES.forEach(g => {
+    const m = String(cells.H11 || '').match(new RegExp(`${g.l}(\\d+)\\/`))
+    if (m) st.muscles[g.id] = parseInt(m[1], 10)
+  })
+  importMuscleDetailsFromText(noteBetween(cells.H11, '角度明细：', '；部位覆盖'))
+
+  const ropeNote = `${cells.H14 || ''}；${cells.H15 || ''}`
+  st.ropeCount = parseIntMatch(ropeNote, /绳动站位(\d+)/, st.ropeCount)
+  st.ropeBonus = parseBoolText(notePart(ropeNote, '配件升档：'))
+  st.ropePenalty = parseBoolText(notePart(ropeNote, '故障降档：'))
+  st.smithCount = parseIntMatch(cells.H16, /史密斯(\d+)台/, st.smithCount)
+  st.smithQuality = parseBoolText(notePart(cells.H16, '质量达标：'))
+  st.smithDualTypes = parseBoolText(notePart(cells.H16, '两种类型：'))
+
+  st.sqRackCount = parseIntMatch(cells.H17, /深蹲架(\d+)台/, st.sqRackCount)
+  setOptState('sqrack-opts', parseOptionAfterDash(cells.H17, /深蹲架\d+台(?:\/基准\d+)?-([^，；]+)/), v => { st.sqRack = v })
+  st.benchCount = parseIntMatch(cells.H17, /卧推台(\d+)台/, st.benchCount)
+  setOptState('bench-opts', parseOptionAfterDash(cells.H17, /卧推台\d+台(?:\/基准\d+)?-([^，；]+)/), v => { st.bench = v })
+  st.dumbbellMax = parseIntMatch(cells.H17, /哑铃最大(\d+)kg/, st.dumbbellMax)
+  setOptState('dumbbell-opts', parseOptionAfterDash(cells.H17, /哑铃最大\d+kg-([^，；]+)/), v => { st.dumbbell = v })
+  setOptState('barbell-bar-opts', parseOptionAfterDash(cells.H17, /杠铃杆-([^，；]+)/), v => { st.barbellBar = v })
+  selectedLabelsToSet('barbell-bar-types', st.barbellBarTypes, notePart(cells.H17, '杆型：'))
+  setOptState('plate-opts', parseOptionAfterDash(cells.H17, /杠铃片-([^，；]+)/), v => { st.barbellPlate = v })
+  selectedLabelsToSet('plate-types', st.plateTypes, notePart(cells.H17, '片型：'))
+  st.adjBenchCount = parseIntMatch(cells.H17, /可调凳(\d+)台/, st.adjBenchCount)
+  setOptState('adj-bench-opts', parseOptionAfterDash(cells.H17, /可调凳\d+台(?:\/基准\d+)?-([^，；]+)/), v => { st.adjBench = v })
+  st.deadliftCount = parseIntMatch(cells.H17, /硬拉\/举重平台(\d+)个/, st.deadliftCount)
+  setOptState('deadlift-opts', parseOptionAfterDash(cells.H17, /硬拉\/举重平台\d+个(?:\/基准\d+)?-([^，；]+)/), v => { st.deadlift = v })
+
+  if (parseBoolText(notePart(cells.H19, '赛级卧推/钢片架：'))) st.advancedSet.add('adv2')
+  if (parseBoolText(notePart(cells.H19, '附件齐全：'))) st.advancedSet.add('adv3')
+  if (parseBoolText(notePart(cells.H19, '硬拉台/多套哑铃：'))) st.advancedSet.add('adv4')
+
+  st.cardio.treadmill = parseIntMatch(cells.H20, /跑步机(\d+)/, 0)
+  st.cardio.elliptical = parseIntMatch(cells.H20, /椭圆机(\d+)/, 0)
+  st.cardio.stairmaster = parseIntMatch(cells.H20, /楼梯机(\d+)/, 0)
+  st.cardio.bike = parseIntMatch(cells.H20, /单车(\d+)/, 0)
+  st.cardio.other = parseIntMatch(cells.H20, /其他(\d+)/, 0)
+  st.cardioFail = parseBoolText(notePart(cells.H20, '故障降档：'))
+
+  setOptState('layout-zoning', notePart(cells.H22, '分区：'), v => { st.layout.zoning = v })
+  setOptState('layout-circulation', notePart(cells.H22, '动线：'), v => { st.layout.circulation = v })
+  setOptState('layout-ceiling', notePart(cells.H22, '层高：'), v => { st.layout.ceiling = v })
+  setOptState('layout-crowd', notePart(cells.H22, '高峰排队：'), v => { st.layout.crowd = v })
+  setOptState('layout-func-space', notePart(cells.H23, '面积：'), v => { st.layout.funcSpace = v })
+  setOptState('layout-func-tools', notePart(cells.H23, '工具：'), v => { st.layout.funcTools = v })
+  setOptState('layout-rest', cells.H24, v => { st.layout.rest = v })
+  setOptState('layout-odor', notePart(cells.H25, '气味：'), v => { st.layout.odor = v })
+  setOptState('layout-ventilation', notePart(cells.H25, '通风：'), v => { st.layout.ventilation = v })
+  setOptState('layout-hygiene', cells.H26, v => { st.layout.hygiene = v })
+  setOptState('layout-flooring', cells.H27, v => { st.layout.flooring = v })
+  setOptState('layout-visual', notePart(cells.H28, '视觉：'), v => { st.layout.visual = v })
+  setOptState('layout-audio', notePart(cells.H28, '听觉：'), v => { st.layout.audio = v })
+  setOptState('layout-mirror', cells.H29, v => { st.layout.mirror = v })
+  st.styling = parseBoolText(notePart(`${cells.H30 || ''}；${cells.H37 || ''}`, '造型室：'))
+  setOptState('layout-atmosphere', cells.H31, v => { st.layout.atmosphere = v })
+
+  importCheckSection('locker-storage-checks', lockerChecks.storage, cells.H33, '柜子：')
+  importCheckSection('shower-checks', lockerChecks.shower, cells.H34, '淋浴：')
+  importCheckSection('locker-design-checks', lockerChecks.design, cells.H35, '设计：')
+  importCheckSection('restroom-checks', lockerChecks.restroom, cells.H36, '卫生间：')
+  st.lockerStorage = computeLockerSection('storage',1)
+  st.shower = computeLockerSection('shower',1)
+  st.lockerDesign = computeLockerSection('design',2)
+  st.restroom = computeLockerSection('restroom',1)
+
+  st.hyrox = parseBoolText(notePart(cells.H37, 'Hyrox/CF：'))
+  st.funcArea = parseBoolText(notePart(cells.H37, '超大功能区：'))
+  st.pool = parseBoolText(notePart(cells.H37, '泳池：'))
+  selectedLabelsToSet('recovery-checks', st.recovery, notePart(cells.H37, '恢复设施：'))
+  st.aed = parseBoolText(notePart(`${cells.H38 || ''}；${cells.H37 || ''}`, 'AED：'))
+  st.groupClass = parseBoolText(notePart(`${cells.H40 || ''}；${cells.H37 || ''}`, '团课加分：')) || parseBoolText(notePart(cells.H40, '团课：'))
+  setOptState('cafe-opts', notePart(`${cells.H41 || ''}；${cells.H37 || ''}`, '咖啡/轻食：'), v => { st.cafe = v })
+  st.specialMembership = parseBoolText(notePart(`${cells.H43 || ''}；${cells.H37 || ''}`, '特殊卡：')) || parseBoolText(notePart(cells.H37, '特殊卡种：'))
+
+  st.scanner = parseBoolText(notePart(cells.H38, '体测机：'))
+  st.access = parseBoolText(notePart(cells.H38, '门禁：'))
+  setOptState('svc-attitude-opts', notePart(cells.H39, '态度：'), v => { st.staffAttitude = v })
+  setOptState('svc-upkeep-opts', notePart(cells.H39, '维护：'), v => { st.upkeep = v })
+  st.trainer = parseBoolText(notePart(cells.H40, '教练认证：'))
+  st.freeTrainer = parseBoolText(notePart(cells.H40, '自由教练：'))
+  st.water = parseBoolText(notePart(cells.H41, '水：'))
+  setOptState('hours-opts', cells.H42, v => { st.openHours = v })
+  st.membership = parseBoolText(notePart(cells.H43, '卡种多样：'))
+  setOptState('price-opts', notePart(cells.H43, '价格：'), v => { st.priceMatch = v })
+
+  setOptState('transport-opts', notePart(cells.H44, '交通：'), v => { st.transport = v })
+  setOptState('parking-opts', notePart(cells.H45, '停车：'), v => { st.parking = v })
+  setOptState('amenities-opts', notePart(cells.H46, '配套：'), v => { st.amenities = v })
+  setOptState('catchment-opts', notePart(cells.H47, '辐射人群：'), v => { st.catchment = v })
+
+  syncDomFromState()
+  goSection('info', false)
+  update()
+  saveDraft()
+}
+
 function downloadText(filename, text, type='text/plain;charset=utf-8') {
   const blob = new Blob([text], {type})
   const a = document.createElement('a')
@@ -2117,6 +2407,216 @@ function downloadText(filename, text, type='text/plain;charset=utf-8') {
   a.click()
   URL.revokeObjectURL(a.href)
   a.remove()
+}
+
+function roundedRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + rr, y)
+  ctx.lineTo(x + w - rr, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr)
+  ctx.lineTo(x + w, y + h - rr)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h)
+  ctx.lineTo(x + rr, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr)
+  ctx.lineTo(x, y + rr)
+  ctx.quadraticCurveTo(x, y, x + rr, y)
+  ctx.closePath()
+}
+
+function canvasText(ctx, text, x, y, maxWidth, lineHeight) {
+  const chars = String(text || '').split('')
+  let line = ''
+  let yy = y
+  chars.forEach(ch => {
+    const test = line + ch
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, yy)
+      line = ch
+      yy += lineHeight
+    } else {
+      line = test
+    }
+  })
+  if (line) ctx.fillText(line, x, yy)
+  return yy
+}
+
+function downloadBlob(filename, blob) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  URL.revokeObjectURL(a.href)
+  a.remove()
+}
+
+function exportFinalPng() {
+  const res = engine()
+  const metrics = metricItems(res)
+  const name = (document.getElementById('gymName')?.value || '').trim() || '未命名场馆'
+  const city = (document.getElementById('gymCity')?.value || '').trim() || '未填写城市'
+  const area = Math.round(S())
+  const scale = 2
+  const W = 1400
+  const H = 980
+  const canvas = document.createElement('canvas')
+  canvas.width = W * scale
+  canvas.height = H * scale
+  canvas.style.width = `${W}px`
+  canvas.style.height = `${H}px`
+  const ctx = canvas.getContext('2d')
+  ctx.scale(scale, scale)
+
+  const C = {
+    bg:'#F2F0EB',
+    card:'#FBFAF7',
+    soft:'#E9E6DE',
+    border:'#D8D4C8',
+    ink:'#16171A',
+    text:'#26241F',
+    mid:'#4E4B43',
+    dim:'#8A8578',
+    red:'#C8102E',
+  }
+
+  ctx.fillStyle = C.bg
+  ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = C.card
+  roundedRect(ctx, 40, 40, W - 80, H - 80, 14)
+  ctx.fill()
+  ctx.strokeStyle = C.border
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.fillStyle = C.dim
+  ctx.font = '28px "PingFang SC","Microsoft YaHei",Arial,sans-serif'
+  ctx.fillText(`${city} · ${area}㎡`, 90, 115)
+  ctx.fillStyle = C.ink
+  ctx.font = '700 64px "PingFang SC","Microsoft YaHei",Arial,sans-serif'
+  canvasText(ctx, name, 90, 195, 620, 74)
+
+  ctx.fillStyle = C.red
+  ctx.font = '900 132px Menlo,Consolas,monospace'
+  ctx.fillText(res.grand.toFixed(2), 90, 395)
+  ctx.fillStyle = C.ink
+  roundedRect(ctx, 520, 282, 155, 118, 8)
+  ctx.fill()
+  ctx.fillStyle = C.bg
+  ctx.font = '900 68px Menlo,Consolas,monospace'
+  ctx.textAlign = 'center'
+  ctx.fillText(res.grade, 597, 363)
+  ctx.textAlign = 'left'
+
+  ctx.fillStyle = C.dim
+  ctx.font = '26px Menlo,Consolas,monospace'
+  ctx.fillText(`基础 ${res.baseScore.toFixed(2)} + 加分 ${res.bonusTotal.toFixed(2)}`, 92, 455)
+
+  const cx = 1035
+  const cy = 310
+  const radius = 195
+  const axes = metrics.length
+  const pointFor = (i, r) => {
+    const a = -Math.PI / 2 + Math.PI * 2 * i / axes
+    return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]
+  }
+  roundedRect(ctx, 755, 86, 550, 430, 8)
+  ctx.fillStyle = C.bg
+  ctx.fill()
+  ctx.strokeStyle = C.border
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.strokeStyle = C.border
+  ctx.lineWidth = 1.5
+  ;[0.25, 0.5, 0.75, 1].forEach(scaleRing => {
+    ctx.beginPath()
+    metrics.forEach((_, i) => {
+      const [x, y] = pointFor(i, radius * scaleRing)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+    ctx.closePath()
+    ctx.stroke()
+  })
+  metrics.forEach((m, i) => {
+    const [x, y] = pointFor(i, radius)
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    const [lx, ly] = pointFor(i, radius + 52)
+    ctx.fillStyle = C.mid
+    ctx.font = '21px "PingFang SC","Microsoft YaHei",Arial,sans-serif'
+    ctx.textAlign = lx < cx - 10 ? 'right' : lx > cx + 10 ? 'left' : 'center'
+    ctx.fillText(m.label, lx, ly)
+  })
+  ctx.beginPath()
+  metrics.forEach((m, i) => {
+    const pct = Math.max(0, Math.min(1, m.value / m.max))
+    const [x, y] = pointFor(i, radius * pct)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.closePath()
+  ctx.fillStyle = 'rgba(200,16,46,0.28)'
+  ctx.fill()
+  ctx.strokeStyle = C.red
+  ctx.lineWidth = 5
+  ctx.stroke()
+  metrics.forEach((m, i) => {
+    const pct = Math.max(0, Math.min(1, m.value / m.max))
+    const [x, y] = pointFor(i, radius * pct)
+    ctx.beginPath()
+    ctx.arc(x, y, 7, 0, Math.PI * 2)
+    ctx.fillStyle = C.red
+    ctx.fill()
+    ctx.strokeStyle = C.ink
+    ctx.lineWidth = 2
+    ctx.stroke()
+  })
+  ctx.textAlign = 'left'
+
+  const startY = 595
+  const leftX = 90
+  const rightX = 735
+  const rowH = 74
+  metrics.forEach((m, idx) => {
+    const col = idx < 4 ? leftX : rightX
+    const y = startY + (idx % 4) * rowH
+    const pct = Math.max(0, Math.min(1, m.value / m.max))
+    roundedRect(ctx, col - 18, y - 38, 550, 66, 6)
+    ctx.fillStyle = C.bg
+    ctx.fill()
+    ctx.strokeStyle = C.border
+    ctx.lineWidth = 1
+    ctx.stroke()
+    ctx.fillStyle = C.mid
+    ctx.font = '24px "PingFang SC","Microsoft YaHei",Arial,sans-serif'
+    ctx.fillText(m.label, col, y)
+    ctx.fillStyle = C.ink
+    ctx.font = '700 24px Menlo,Consolas,monospace'
+    ctx.textAlign = 'right'
+    ctx.fillText(`${m.value.toFixed(1)}/${m.max}`, col + 500, y)
+    ctx.textAlign = 'left'
+    roundedRect(ctx, col, y + 18, 500, 8, 3)
+    ctx.fillStyle = C.soft
+    ctx.fill()
+    roundedRect(ctx, col, y + 18, 500 * pct, 8, 3)
+    ctx.fillStyle = m.color === '#FDFDFB' ? C.border : m.color
+    ctx.fill()
+  })
+
+  ctx.fillStyle = C.dim
+  ctx.font = '20px Menlo,Consolas,monospace'
+  ctx.fillText(`FITX Gym Scorer · ${new Date().toLocaleDateString('zh-CN')}`, 90, 910)
+
+  const gym = (name || 'fitx-scorer').replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
+  canvas.toBlob(blob => {
+    if (!blob) return alert('PNG 生成失败')
+    downloadBlob(`${gym}-末页-${new Date().toISOString().slice(0,10)}.png`, blob)
+  }, 'image/png')
 }
 
 async function copyScoreTableRow() {
@@ -2175,6 +2675,7 @@ function resetAppState() {
   st.ropePenalty = false
   st.smithCount = 0
   st.smithQuality = false
+  st.smithDualTypes = false
   st.sqRackCount = 0
   st.sqRack = null
   st.benchCount = 0
@@ -2260,6 +2761,7 @@ function syncDomFromState() {
   applyToggle('tog-rope-penalty', st.ropePenalty)
   setNumber('smith-count', st.smithCount)
   applyToggle('tog-smith-quality', st.smithQuality)
+  applyToggle('tog-smith-dual-types', st.smithDualTypes)
 
   setNumber('sqrack-count', st.sqRackCount)
   applyOpt('sqrack-opts', st.sqRack)
@@ -2430,6 +2932,7 @@ function initUI() {
   // smith
   numInput('smith-count', v=>{ st.smithCount=v })
   tog('tog-smith-quality', v=>{ st.smithQuality=v; update() })
+  tog('tog-smith-dual-types', v=>{ st.smithDualTypes=v; update() })
 
   // basic items
   numInput('sqrack-count',    v=>{ st.sqRackCount=v })
@@ -2542,6 +3045,17 @@ function initUI() {
     const btn = document.getElementById(id)
     if (btn) btn.addEventListener('click', exportOriginalFormatExcel)
   })
+  const pngBtn = document.getElementById('btn-export-png-final')
+  if (pngBtn) pngBtn.addEventListener('click', exportFinalPng)
+  ;['btn-import-xls'].forEach(id => {
+    const btn = document.getElementById(id)
+    if (btn) btn.addEventListener('click', () => {
+      const input = document.getElementById('import-file')
+      if (!input) return
+      input.value = ''
+      input.click()
+    })
+  })
   const templateInput = document.getElementById('template-file')
   if (templateInput) templateInput.addEventListener('change', async ()=>{
     const file = templateInput.files?.[0]
@@ -2554,9 +3068,16 @@ function initUI() {
       exportOriginalFormatExcelFallback()
     }
   })
-  ;['btn-copy-row','btn-copy-row-final'].forEach(id => {
-    const btn = document.getElementById(id)
-    if (btn) btn.addEventListener('click', copyScoreTableRow)
+  const importInput = document.getElementById('import-file')
+  if (importInput) importInput.addEventListener('change', async ()=>{
+    const file = importInput.files?.[0]
+    if (!file) return
+    try {
+      await importOriginalFormatExcel(file)
+      alert('已导入原表内容，可继续修改评分。')
+    } catch (err) {
+      alert(`导入失败：${err.message || err}`)
+    }
   })
   ;['btn-clear','btn-clear-final'].forEach(id => {
     const btn = document.getElementById(id)
