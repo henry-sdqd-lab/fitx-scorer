@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#F2F0EB">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="FITX Scorer">
-<title>FITX 场馆测评 · Protocol V3.3</title>
+<meta name="apple-mobile-web-app-title" content="真探堡健评分">
+<title>真探堡健独家V2.0 · 场馆测评</title>
 <style>
   :root {
     --bg:#F2F0EB;--bg2:#FBFAF7;--bg3:#E9E6DE;--border:#D8D4C8;
@@ -167,8 +167,12 @@
   .result-panel .coeff-total-label{color:var(--text-dim);}
   .result-panel .coeff-total-value{color:var(--steel);}
   .bonus-tag{display:inline-block;font-family:var(--mono);font-size:0.63rem;font-weight:700;padding:2px 7px;border-radius:2px;background:var(--bg);border:1px solid var(--cal-chrome);color:var(--text-mid);margin:2px;}
+  .bonus-tag.penalty{border-color:rgba(200,16,46,.55);color:var(--red);background:rgba(200,16,46,.06);}
   .bonus-label{font-size:0.68rem;color:var(--text-dim);padding:0.35rem 0.5rem;font-family:var(--mono);}
   .bonus-note{font-size:0.68rem;color:var(--steel);}
+  .penalty-note{font-size:0.68rem;color:var(--red);font-family:var(--mono);}
+  .tog-row.penalty{border:1px solid rgba(200,16,46,.45);background:rgba(200,16,46,.06);padding:0.6rem 0.75rem;border-radius:3px;margin-top:0.75rem;}
+  .tog-row.penalty .tog.on{background:var(--red);border-color:var(--red);}
   .final-card{padding:0;overflow:hidden;}
   .final-hero{display:grid;grid-template-columns:1.05fr 0.95fr;gap:1.4rem;align-items:center;padding:1.35rem;background:var(--bg2);}
   .final-place{font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:0.55rem;}
@@ -274,7 +278,7 @@
 </head>
 <body>
 <header>
-  <div class="logo">FIT<span>X</span>&nbsp;场馆测评 <span class="proto">PROTOCOL V3.3 · 满分100</span></div>
+  <div class="logo">FIT<span>X</span>&nbsp;场馆测评 <span class="proto">真探堡健独家V2.0 · 满分100</span></div>
   <div class="hdr-score"><span class="hdr-total" id="hdr-total">0.00</span><span id="hdr-grade">—</span></div>
 </header>
 <div class="shell">
@@ -330,6 +334,10 @@
     <div class="field"><div class="field-label">健身房名称</div><input type="text" id="gymName" placeholder="例：青岛懒人健身"></div>
     <div class="field"><div class="field-label">城市</div><input type="text" id="gymCity" placeholder="例：青岛"></div>
     <div class="field"><div class="field-label">训练区面积 (㎡) <span class="hint-tag">影响所有基准</span></div><input type="number" id="gymArea" value="500" min="50" max="9999"></div>
+    <div class="tog-row" style="margin-top:0.25rem">
+      <span>未知训练面积，当前输入为总面积，按 80% 折算训练区面积</span>
+      <div class="tog" id="tog-area-total"></div>
+    </div>
   </div>
   <div class="card">
     <div class="card-title">面积基准预览</div>
@@ -712,6 +720,10 @@
       <div class="opt" data-v="1">有消毒喷雾，分布一般</div>
       <div class="opt" data-v="2">消毒用具充足且方便取用</div>
     </div>
+    <div class="tog-row penalty">
+      <span>场地脏、乱，无人管理打扫 <span class="penalty-note">-2</span></span>
+      <div class="tog" id="tog-hygiene-penalty"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -845,6 +857,10 @@
         <div class="opt" data-v="1">维护好，秩序协调良好</div>
       </div>
     </div>
+    <div class="tog-row penalty">
+      <span>场地内有抽烟及电子烟现象，且未做管理或管理无效 <span class="penalty-note">-3</span></span>
+      <div class="tog" id="tog-smoking-penalty"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -937,7 +953,7 @@
 
 <!-- BONUS -->
 <div class="section" id="section-bonus">
-  <div class="section-header"><div class="section-title">加分项</div><div class="section-subtitle">直接叠加至总分，无上限</div></div>
+  <div class="section-header"><div class="section-title">加分 / 扣分项</div><div class="section-subtitle">直接叠加至总分，无上限</div></div>
   <div class="card">
     <div class="card-title">训练生态</div>
     <div class="tog-row"><span>Hyrox / CrossFit 官方认证 +0.5</span><div class="tog" id="tog-hyrox"></div></div>
@@ -1029,7 +1045,16 @@
 
 <script src="jszip.min.js"></script>
 <script>
-const S = () => Math.max(50, parseFloat(document.getElementById('gymArea').value)||500)
+function rawAreaInput() {
+  return Math.max(50, parseFloat(document.getElementById('gymArea')?.value) || 500)
+}
+function S() {
+  const raw = rawAreaInput()
+  return Math.max(50, st.areaIsTotal ? raw * 0.8 : raw)
+}
+function B() {
+  return Math.min(S(), 2500)
+}
 const STORAGE_KEY = 'fitx-scorer-v4-draft'
 const XLSX_TEMPLATE_URL = 'fitx-score-template.xlsx'
 const XLSX_TEMPLATE_BASE64 = 'UEsDBAoAAAAAAIdO4kAAAAAAAAAAAAAAAAAJAAAAZG9jUHJvcHMvUEsDBBQAAAAIAIdO4kDOQlwBMQEAADkCAAAQAAAAZG9jUHJvcHMvYXBwLnhtbJ2RwUoDMRCG74LvEHKvaYuIlGyKoOJFLFi9x+xsG9hNQmZcWp/FiwfBN/Dk2yj4GGY3oFvx5G0m/88/30/kfNPUrIWI1ruCTw7GnIEzvrRuVfCb5fnomDMk7UpdewcF3wLyudrfk4voA0SygCxFOCz4mijMhECzhkbjQZJdUiofG01pjSvhq8oaOPXmvgFHYjoeHwnYELgSylH4DuQ5cdbSf0NLbzo+vF1uQwJW8iSE2hpNqaW6tCZ69BWxs42BWoqhKC9Ad+UX2kZUsqVZC4Z8ZGgfUv0pZ3caoYsteKuj1Y5SfGfLSz/XASmqj9fn97fHz6cXKZKe3/pxaB3O9lBNekMado1dQOZIwi7h0lINeFUtdKQ/gCdD4J4h42ac6zUA5ZtDvr5xuvQrW/z8ufoCUEsDBBQAAAAIAIdO4kA9x26BUwEAAGQCAAARAAAAZG9jUHJvcHMvY29yZS54bWx9kk1OwzAQhfdI3CHyPrGTQkutJBU/6opKSBSB2Fn2tLWIncg2tN1yGNYsuBKcAydpQyoQy/F7882bkdPJRhXBCxgrS52hOCIoAM1LIfUyQ3fzaXiGAuuYFqwoNWRoCxZN8uOjlFeUlwZuTFmBcRJs4EnaUl5laOVcRTG2fAWK2cg7tBcXpVHM+dIsccX4E1sCTggZYgWOCeYYroFh1RHRDil4h6yeTdEABMdQgALtLI6jGP94HRhl/2xolJ5TSbet/E67uH224K3YuTdWdsb1eh2tB00Mnz/GD7Pr22bVUOr6VhxQngpOuQHmSpOfCyW1tM7UVYp7Sn3Fglk38wdfSBAX2/zz7fXr/SPFvxWPbDZouSACn4m2G+yV+8Hl1XyK8oTEozAmIRnNyQlNhpSQx3rwQX+dsX1Qu/H/EpOhx9XEeEzJKY3HPeIekDe5D/9F/g1QSwMEFAAAAAgAh07iQEWDrRdyAQAAIgMAABMAAABkb2NQcm9wcy9jdXN0b20ueG1stZJdT8IwFIbvTfwPS+9Hu+5DRrYZ1kJCkEgUiHdkbgWXrO1cuykx/neLiMKtxpumzTl5+pycN7p+5ZXVsUaVUsTA6SFgMZHLohTbGCwXY7sPLKUzUWSVFCwGO6bAdXJ5Ec0bWbNGl0xZBiFUDJ60rgcQqvyJ8Uz1TFmYykY2PNPm2Wyh3GzKnFGZt5wJDTFCAcxbpSW3628cOPAGnf4tspD53k6tFrva6CbRF3xnbbguixi8UZ9Q6iPfxqOQ2A5yUjt0wysb9RHCKSbjcDh6B1a9b8bAEhk3o0/IyrA6PajqF6WbJCAEp2MvpCh0aJC6wZhSjwTDkTNyh4GL1p4bwZ/2CB41/ijkHoWm97dmzqLNddqWVbFizZkfRj62Hdxzetjvh/7h/Bcj78RowXhdZZotlxN6ptOZcK354/q5r4qXjqQ38ymc1bNmSB4etts4/hcz/2hGsipvjZeJ+V1bsYNZ6SXo81tzOV0P3MfnEO7kA1BLAwQKAAAAAACHTuJAAAAAAAAAAAAAAAAAAwAAAHhsL1BLAwQKAAAAAACHTuJAAAAAAAAAAAAAAAAADgAAAHhsL3dvcmtzaGVldHMvUEsDBBQAAAAIAIdO4kDfzseOwQ0AAL84AAAYAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sjVvbciLJEX13hP+B4Ml+WKAvINQhaUN9d8SuY8PjtZ8Z1BoRC7QMPaMZf71PVWZ1XcG8DKOTWZeTmZWZVDcPP38/7CffutN51x8fp9FsMZ10x23/sjt+eZz+/s/6p/V0ch42x5fNvj92j9Mf3Xn689Of//Tw0Z/+OL913TDBDMfz4/RtGN6z+fy8fesOm/Osf++OkLz2p8NmwJ+nL/Pz+6nbvMhBh/08XixW88Nmd5zSDNnpljn619fdtiv77ddDdxxoklO33wzY//lt935Ws31/uWm+l9PmA1zVfowtliQZ54tSb3+H3fbUn/vXYbbtD3Pams/yfn5v8TxsvYkCxjpsTn98ff8JE7+D3Ofdfjf8kHTVhrpBz/Px8TH7eD/PtkfehWGg6G7eDcXX89Afys2wmT49SA/8dpo/PbzsYEXh+smpe32cPkdZm95PIZAq/9p1H2fj/5Nh8/lTt++2Q/eCWJlO/tv3h0/bzR5xEUWInPHvvwuv7xkd+vdfuteh6PZAnuNkOhGx87nv/xAL/A1TLcSm5MRiK5vtsPvWkXpzh/D7j9wc/ouNzcedmf9Xu6xltP12mrx0r5uv+6Ho9//evQxvj9P1bL1OV9EyoX/vp0rlH/1H2+2+vA3Y7d1sNZ30X4f97tj90n3r9hj/OJXrbvs9FsG/k8NOHJTp5LD5Lj8/aAHB/zz8ELaIp5OttDevHYmNj0MhlUPxyUOXs7t0wRsT27txIhhSTiQMSnu4m8X368Xd6j5O5L83TpTyRPjkiVbRLF7ej+aC4CZqS54In2qiG0fC7pILPnlktJgl8cgk0UYB3SvWRbzIifDJE61nyR02xARA5cpoJDs5Gp88Oolni9UdmRP/inC84uQ5hYmMUXHYnh5O/ccEiQjbFxEWJzO4/fy+EQkzytaI+60QPwt6j1NsE0pnoN+eFg/zbwjxLWvkpLGSoSSGFC5QukDlArULNC7QGsAcWx/3j13L/cM/gd0LTuKc6N1Hzu6VhjgIcvcuUBKwHvlVSkNPGtuT1qQh85WctPGHJPaQ1tdIRw2LMKKMUkKQMKTCgTjyo7+W4zxyLzmpUO6QjBWgh6zsIaWvcWdrVL7G2taolYYydOMCrQFYjHEyBOOVKPh+gIoUAMaIj5Hxvb10ziow8agSOVFcsA72oHWcWClZBx9ax3F9xTpLeVScCWoW6rPSMKK90TIi480yA87gFTOIRCLNoOybMxKPgVswouOyJCQ2wyVyIrNinYgYzVxOLNbLNLyMwYl1ErEVi5M4tdi1Sn1UJSUgqC5RDCknjoUwGAI8C1UzEdI5IXGqubOOwZ11sDftTX3m5FmpWEc7rPaQxkNaRqQBLLpIRFdcKFK47UJGtG0LRgwahNgudI58xTqXXMhivYxsblAUdNJrWUcubHHCqRScotUsfD4FarNiRC9XMJJQfZnFTu4oSZ5YYerkqIp1iKMzQT0K1eloGNGbaBnxgxRRKBimULglGqHuEGZEr1UwYriRkERHbMWIjuraQxpCjDhvWcdnIWrCVUfJPtH2lIKMnSvI2DpDyXI8bZWCjM37UKPmMjKF0pInzoozkeGv759aBOgpJ+dijPCFuX+GzP0TlCDEdSZwCxxPhXZP9ECxUz5qLVaLNwrSi7cK8pM7tvh/2FGDgBnUArkY47JjyGRHUKKhigeCi5qr9qGGITO4GEoXYqDtHRRO6R2RiG45JRFVe4sPQaneVqG09OZLhlJt1oohiw/NZUCNmsuMNl4xcFpQhiUfkff8piPiKq23mjOUwNw6ipw8VKhxY6Zz2oeSFVLMr2dx+plKLUWx6NSsmqWxNlCjICOfq4XkobVdiYooqAsmN3mS671pCy74OpsVEWuZniQoRbkcuboHq+JxqfZa7UOND7UKCpw1LHjNt1S+rcjkim7yYS2TD0GW72KnXaoiUuI84khrllq+47VN3/FCcm3bdwhXQW0t4jMQtlTFLWoEGae8iFjLpEaQTc2J3YrHKWpOE1Kz2OLGi5vcCFoGUgzqr+CGe6Db4pIKukWWIIssa5lkCbLj0u2KI1Yy49KDGl+rVVAgLkHsmvOotFt8CLL4sJbJhyDbeU7WqCJSYuc5rq1ZavmO1zZ9R9BSZgIrLkVVENQgCsWlEDs9E0NWOo2dkCrUOJVOF45CyQpLMynHbueolqJ06kxRs9SkriCDulrID9sYlBX1W9Kp0HdtQZDpZqVluJmhJWqaTqduG6OUdCarfajxoVZBfr2AZSTBC9/PhRh8lshZeltOXcxZyfa2U/YKVkIdl9dQMydIS7USMsi4UuI0apVa6YKzabNQUp1RwwPM70IM0YW0Hecw/pUjLK6YXd8SZPmWtUzfErS0qDnFo+LZ+Qh7ccwLmdQYMuOYoBC16x0RCHjUCLKosZZJjSCbmuPaimdXpcW+36m1VHuN1zapERSihkZEHdFA1Yy5dTEaHIYsan6Dw1o2NbeQsNKFxKsWMr1GC1kBSVCIGo6doCaLr98QxNRJmDWFIYsaa5leI8im5tYUnuoSNZrCOmsMmV4jKEQNh+EaNWokLGoEWdRYy6RGkE3NOU1VTEqXApIXMr3GkEmNoBA1dBKCGq4DguWSGg2LGkEWNdYyqRFkU/PKISldojZK9VkjyApIgkLU0CNco0YthEWNGw1dsoqYtUxqBNnUvOpHSpeo8UKm1xgyvUZQgJq4n1LUbqn0Qp8qozJlzpDpRobQgSmtUg1ErtaFzimplVLSZqt9qPGhVkF+pYfdRoKBPCnETnVjyOLDWiYfgmzfOdW/4qnwIS9gnBKgFjJ8pyDDdwyFfMdNzMVrTNGauM5iSC9QKC2THGuZzkrdrkSNM53F4zTU+FqtggLOwoIqGkPOokK/kg0rPxhiCN4Ywyp1mowiYaWYmzCv5WYFy5mpW89ZiZ3prFGz1KwMCtK2bhkKORNp8xp1agQs6gzpEl/I3IunTvJuSBqoZMim5tZzVrpEjRayqDFkUiMoRA2V/ho1agQsagyZ1BgyqRFkU3PrOW54xRlgao5Pa5Za1GiAWRlYK0QNlf4aNWoELGoM6SNSJAzJ88BeI8im5tZzHnfJazQFpCoHNzzAokZaIWqo9ILaha9I4uYZdl3px0y5ghAI+iw6lbpQSiZZmsom65ZBHsdknVxUa6kmS7NaZAkKkUXtF2QvfNdPqDVYYbxm5hSvnJWMBQs1TryagJcQ3OeQJctt5l4RocUvuZmkVgQzZB5OgkLM0Rpci2DqHMBcGTbHrbzwvMWTtfSKJWtZ1JaO2ypWYmre4eSFzPrord3yHAFquPK/5lQhFhFsUGPIpKa0DGoM2dScelCx0gWvqYUMagrSC7UMhaih3l3xGh5HeNQIsqixll6x5IE2NccvFStdosYLmdS8tVueI0QNPYSgduHbH56heNQIsqixlkmNIJuaWwh59gsByVLzrClIL9QyFKLG7c2FlJpym2IGJEEWNdbSK5Y80KbmFkJWYmoO8ZqlFjVv7Za1QtSQ9K8kUHGPi7NmXagtnXqWsxLI6iy7dOsHK8GElFIXTqEo1VJmrl46ShUrsTEcU9VqI2YIEwHDES1rhYyBFuLa6aQOw/y+mHpNR8EQiKrMWzJk+9kpQxUrXfIzL2RS89ZueY4QNfQLgtqFhzXi+QP8bFHjPgTHb6ydS6fGFWqcuiZdOPFZsoJFfeWWE1a6dHppI1aIM6Rt3PIcIeqIqGtepebCos6QPtAFngnK9GV82WLIpuaVExrH1BxpzVNY1GiAFbAEhajhyAlql3IudQ9W+7NyqkIuXjVx2gKGrBAmLXrcQu8rsdadeG/521O0cLxaK7nRyOq1nh5enz79/utfmjRr0tVfH+avMi3Y37Rb1g88oIMxiLl4xHXLBYgYAJp3ZjivnGjNWcnKZCsnyxRaSR9wnlx/yal8rVptQWs1vpZ49VxuVH7RoAt/et2bXqU9dKcv8rXw82Tbfz3C+Xiv9+lhhPU77NLuLh5nhUwhLp5keFcTfBy8SjK8TBnA0wwvGAbwZVbLbwjOPOUqw5tqAf27rJanzNHHaweZeLnAH1FGy0w8b/cleNyNMcFVIiyDM+KPKaM1ZpNpxNvBPcbI4+5K4kUmntQFZovx0wE8vPIleBSEMSHL40kKJEEbx7AB3WZ5O4CZcVsfWgc2wFV4SAIb4CY5JFlDErRBDBvg/tMfg2vBTFze+RLcnSFkQjYokxhjgjZIRJgFbZDABrjlCK0DG9BrYK51EtgAX5lDY2ADfOUMSWADfKsLSWADfFcJSFLEAVr9kAQ2QKcckiAO0GiGJLAB+rSQRBy2oA1S2AA1PzQGNkBJDElgA3rDxbVbChsg4/pjkBfVT2KcMc9p9hwM+GcE/HPQ1M/JOnsOEn1OMVtw03ma5XgUG9gZ8kQePKU5Tmke3BoeACPZhbyTIw7zYOTgkiDLg5tG9wtJyAd5uoIkFG1FmhVBfJ2Jt9B8mniXC5JQEOK1BGT0EBk8ws6KIE3cq0ISCg5cfGRFkGYBmqK1DewNNEV75EvKdVbiHcuAIIogCRFt4gzv6vsjmnUm3uAMCDCVeNvOl7Qi24RwkfFDU+GNSUhCQyocjOCQCkNqGjIfTwZ+IfW++dL9ujl92R3Pkz1+9YUfd83Ez29O9BMr+gO/CEPnNp187gf8Kk3+9w2/DOzwTvliBuXXvh/UH6BHslqC+HM+/vTw6X9QSwMECgAAAAAAh07iQAAAAAAAAAAAAAAAAAkAAAB4bC90aGVtZS9QSwMEFAAAAAgAh07iQPj+HBCNBgAAmBsAABMAAAB4bC90aGVtZS90aGVtZTEueG1s7Vnfbxs1HH9H4n+w7n1r0iZdUy2dmjRZYetWNdnQHp2Lc+fFdz7ZTru8TdvjJCTEQHtBQrzwgIBJmwQS45+hY2gMaf8CX9t3l3Nzoe1WgYBFVXNnf/z9/f36a+fipTsRQ/tESMrjplc9X/EQiX0+pHHQ9G70u+fWPCQVjoeY8Zg0vSmR3qWN99+7iNdVSCKCYH0s13HTC5VK1peWpA/DWJ7nCYlhbsRFhBW8imBpKPAB0I3Y0nKlsroUYRp7KMYRkL0+GlGfoOc//vTyq0e/3H0Af95GxqPDgFGspB7wmehpDsRZaLDDcVUj5FS2mUD7mDU9YDfkB31yR3mIYalgoulVzMdb2ri4hNfTRUwtWFtY1zWfdF26YDheNjxFMMiZVru1xoWtnL4BMDWP63Q67U41p2cA2PdBUytLkWatu1ZtZTQLIPs4T7tdqVdqLr5Af2VO5kar1ao3UlksUQOyj7U5/Fpltba57OANyOLrc/haa7PdXnXwBmTxq3P47oXGas3FG1DIaDyeQ2uHdrsp9Rwy4my7FL4G8LVKCp+hIBry6NIsRjxWi2Itwre56AJAAxlWNEZqmpAR9iGY2zgaCIo1A7xOcGHGDvlybkjzQtIXNFFN78MEQ2LM6L1+9u3rZ0/Q62ePD+89Pbz3w+H9+4f3vre0nIXbOA6KC199/ckfX9xFvz/58tXDz8rxsoj/9bsHz3/+tBwIGTST6MXnj397+vjFo49ffvOwBL4p8KAI79OISHSNHKA9HoFuxjCu5GQgTreiH2LqrMAh0C4h3VGhA7w2xawM1yKu8W4KKB5lwMuT246svVBMFC3hfCWMHOAO56zFRakBrmheBQv3J3FQzlxMirg9jPfLeLdx7Li2M0mgamZB6di+HRJHzF2GY4UDEhOF9BwfE1Ki3S1KHbvuUF9wyUcK3aKohWmpSfp04ATSbNE2jcAv0zKdwdWObXZuohZnZVpvkX0XCQmBWYnwfcIcM17GE4WjMpJ9HLGiwa9iFZYJ2ZsKv4jrSAWeDgjjqDMkUpatuS5A34LTr2CoV6Vu32HTyEUKRcdlNK9izovILT5uhzhKyrA9GodF7AdyDCGK0S5XZfAd7maIfgc/4Hihu29S4rj7+EJwgwaOSLMA0TMTUeLLy4Q78dubshEmpspASXcqdUTjvyrbjELdthzele2mtwmbWFnybB8p1otw/8ISvYUn8S6BrJjfot5V6HcV2vvPV+hFuXz2dXlWiqFK64bE9tqm844WNt4jylhPTRm5Kk3vLWEDGnZhUK8zZ0+SH8SSEB51JgMDBxcIbNYgwdVHVIW9ECfQt1c9TSSQKelAooRLOC+a4VLaGg+9v7Knzbo+h9jKIbHa4UM7vKKHs+NGTsZIFZgzbcZoRRM4KbOVCylR0O1NmFW1UCfmVjWimaLocMtV1iY253Iwea4aDObWhM4GQT8EVl6F079mDecdzMhQ2936KHOL8cJZukiGeEhSH2m9531UNU7KYmVOEa2HDQZ9djzGagVuDU32LbidxElFdrUF7DLvvY2XsgieeQmoHU1HFheTk8XooOk16st1D/k4aXojOCrDY5SA16VuJjEL4NrJV8KG/bHJbLJ85s1GppibBFW4/bB2n1PYqQOJkGoLy9CGhplKQ4DFmpOVf7kOZj0rBUqq0cmkWFmDYPjHpAA7uq4loxHxVdHZhRFtO/uallI+UUT0wuEBGrCJ2MPgfh2qoM+QSrjxMBVBv8D1nLa2mXKLc5p0xUsxg7PjmCUhTsutTtEsky3cFKRcBvNWEA90K5XdKHd6VUzKn5EqxTD+n6mi9xO4glgZag/4cEksMNKZ0vS4UCGHKpSE1O8KaBxM7YBogStemIaggqtq8y3Ivv62OWdpmLSGk6TaowESFPYjFQpCdqEsmeg7hlg13bssSZYSMhFVEFcmVuwB2Sesr2vgqt7bPRRCqJtqkpYBgzsaf+57mkGDQDc5xXxzKlm+99oc+Ls7H5vMoJRbh01Dk9k/FzFvD2a7ql1vlmd7b1ERPTFrs2pZVgCzwlbQSNP+DUU45VZrK9acxsv1TDjw4rzGMJg3RAlcJCH9D/Y/KnxGTBjrDbXP96C2Ivj9QhODsIGoPmcbD6QLpB0cQONkB20waVLWtGnrpK2WbdZn3OnmfI8YW0t2En+f0th5c+ayc3LxLI2dWtixtR1baGrw7NEUhaFRdpAxjjE/mBV/zOKD2+DoLfjZYMKUtLQNaONPUEsDBBQAAAAIAIdO4kCwn+lszhUAALZwAAAUAAAAeGwvc2hhcmVkU3RyaW5ncy54bWzlXVlTW8eef5+q+Q4qppKqGRc+Agy2b2zd8mS59+lWajwz78RhbNe1IQMkk8yTWCQhCW3sIDCbhCCAJCyMdvFduOo+5zzlK8yv+390DEh2xKIj1x1XInTW7v++duvRH39+/cr208DwyMuhwccdXXftHbaBwWdD378cfP644z/+/ZvOBx22kdH+we/7Xw0NDjzu+GVgpOOPjn/8h0cjI6M2PDs48rjjxejoD39QlJFnLwZe94/cHfphYBBX/mto+HX/KA6HnysjPwwP9H8/8mJgYPT1K6Xbbu9TXve/HOywPRv6cXD0cUdfb4ftx8GX//3jwJfmCcejkZeOR6MONhbXCvt86pS/82upSW1z9z+779ofKaOOR4q4Q94lpvKHkR/6n2GKGGtkYPingY73j7JwQE2kbRf/XXqFg60HWW788lkMyabcl8+ymIdndi+fpRkyt4sl83XX1iZ0T+DyWXo73/AwT90YvLhZP/IHAF3e5VtpNl34/J+67F/09n52EVKb7fK4LFpgyRUmH/vYNT5/XC3Pqpkin09fvG/Y8Wj4W3x8p4AE/2v7qf8V2KerA0fPhl4NDduGn3/3uOObb+wP7A/tX4rTw98MDY7SfTyexVvlvS/6h0cGjNNdPffEOUW+F4SfHVO907rTy/173DfPXHFW2KFJiMGN8Vsz9m+lFYlKFkvoE7sgQ7W0pB3vaqdRFtqGlChsLMSzWRae4lMLdI1Fy9VCwn73Ya8iH+XLSd25Yp5VquWgup+y330gr6rFY+6LsWxSXw50dXbzzW0TMpOrayB+1yoUf4yZePhQdwX4VFh1rwPvNYSYs6xN7mP4t4t/16N9YL6acxIHsMAGT83ZPn8++sV9+2c2gWGJwmqueP6GXvtnLLvDQhmWP+GrXlAHINhAK7tByRW6Wy3O8jeToJwadldzc6o3r3nfkiTQSGfeeDfG6brbZWgZgGrSZNQBaqsJJ72+WsCAqWrFz3bGgSEi9rfDL18P8OhptbjNnWtaNvU35xgLT2vj02olxmIrWhl8lMdJcARUAosFMA0tMQMsaztuNbrA4mUDwEMWiun7S9ViljlLajHEXDm+WmBv/L+VpjAqhvzyl+8GfrZ93f/81QCbmtGm8r+VvPJhsG21DPotENR4TF3x4DE5OxYKcK+/mvNzvxcT+bZ/sH90tF8cL6zy4C5O/WXgf0YHnr1Q95dZ4rRaSbB8ppqrqIfe2vuhKhneuetUSwUFc2SgWDFL2MRgipqIsMMdLXmoFica6Zka/1jM3Dw0w6fHwU+CaJIHrsvc11dsw7Yzbwx83GcXTCapJQ8+fzX6ha128X7ve94dlsyPJ3AS7G/KoMmVzSLz2gLZWFPwae+Zc7WrD1pSPSqeOdd0ZxhftKQwXOA1ngrh0H63Vx6CdUipmvOvTbslOqTxlM8iG2BwbSKnnEU2WSxP37a0iWmSBpzexgELByEaOIhp43t4gFT6WSRezR2Ka2vruLZTLUyz2DG+Jao5L32DaEfIuGr5A0gMLu5pp6sXTkmK3xgJLOlvwoieRX698UhNmevG6LZprlN2NFUt5ZQbT6NZgPdvPNJNAS6lBOVvPI1mAT648Ug3AVjf91tK3sN2Q8sX/dbRNtlWaLVJH18/ggBbB3DqEwAY/Cx1tOaP83Vh0YTTtbzLDpfYKrwquI0BuH3q3K4C50ePnlSLJ2fuGS0VJ+Nn/5vTCCPPe441Y1fv8Fw1MmqsamGM+9TiJLmZWmKcpdZhnC84ntLHVEwXFAabHE4YZthBeH2wfOLTdSo+x/fwCTdR84zLk3m4lIBMYoa5Dlgp9PjJv8DKP1V67Xa4hZ2dRpgpIG0YnV0VUAcLjWvOCcSeuidEgSCGgiuqHmUoZqZL1VzhSR3btArPxBkTuboBL3oxV4W1MVFBmWrOp8DrwP9+pVpMs0ACFBR+C1D/5HHvPzf2Jm4OvQPMYBWMAAXsJswIC/iMb/iDTAqfOwFrKcKZPNzW17YUhC74g3MS/L5aOFI301tAADCujW/VvblFdDb8Rc29JgLbVAlBFSI0+Y2lQ5BJCfD9VgIMlEPGrQIYbrUga2hGQUQmiMxiC+xoXuHpY4g4HUiYe1oJMyk4q2CmiAFQIWImqS4HBegUP+A8eI4F/Qr5zLgiEdDdSgRoLqHYbxkBDigutbyo7x3wmAtCncUo4tuf/vzVb6UocgWq/4DOUm7ABNOchxnbjjo0z6/q3NHVkghXVb8OtZhhvt3abFbMedyWJYutIJeCjAwgZdMu7kdwKLIvCkWaggcg5XplWV/cZSEfc+2rU7/qRyVzHiY+ahP6qIKrFk8RPXSIbOxHMqzcWaRJkRlF4uup0iVs+RXAb24kwFYtBJHA0JJpWGsMMY2Dzi46BH9Ps+Q0ks10fE/aNF6MaOUkC2zqm6eKPrOlHm+p27s8sK4gMYnEGbww7SSjMFdGn0tynw+SDHeMxY7gi4msKnKq4DXcC/esmkuz1DSyYcgMUo7qPL3xAAt4xAPXRHdT8RO8mbcs5eYLqSshuLl3Q58gPw03CbnE6ukacxXV3QxS/AolFpHXY+HIHTV6rBZgSKImnE1xU3NTICZ6LN1B8/1XY9umBmrsKTFfFNCjBMLWC+qmU9/MA8sQNuSg8J1qKd2Uh2rsMd3MrDtEYil7pOXf8jcnilosidLAm5OafxokanBnAgmhTfhwMH4slKbLmKX2LiqeA+VQFcC3msI/i2yx2Yg+OwEvUF8Oww8HByFjKTxz6RVLWJCz4msbuIuvud+P6DvhzjEMF6NrqtcDeZccElTlNZvxcBzBjJaeYJ7M+4cl89B0d9TNA6GpkNMQ6WqYZkx8akEtzTL3W7aahjt2TXI3pztqSLp1pWRS6anSI7Qe7JKgC9BvnIA1FliHwhJ+Jm6o5mYR9RE+ADlfE7J0CXtShUIKiQ+Rt8fjpNCIknzVicQ/vbnX/tfneINJPG1njB+NQ0fBHxBcu+YGoSG0PPoW3xXKItLd4gJx2Zqb1KXkAFBZxwCna1pqjBQCbgTZhGyEfKQ4hQmqSQtuxkm1nDRA83rE1NNl3M8XN6q5OJ5FrQNQ8wkXc78DHq5J7NuQbUgYmP+SbFN+WaG6DGoS+o4bJOGFLeYptFjigTRJJiF7omykJqR9T3qZaxdkgm06hP4V34hntHJKHMDDVb2C6ufqKVALpg6HNlALCUNLeDLS+EF6IXNFUbiS+mHq61cDL/86dF5RwH+QhAYPKEKheLcVdafITif0mT1Irw/n4d9gTH15EjaxpjouMHUoXZPzUJr4h78ZE84qsgYsvkgsXM8Bow5Rcksnruak3VKl+AMG4VzuAKyP1AzqZpBFShxI4E04albwog24pek5SIHBMErfavq8YqBKJs0N5/nqgb5ZJP9Qy0b4YVyU0njskK265bd4iW+lxDe40Fp5B3kBdWUSygJvMIGpM7lXheoqahmVrB6yB4JBhEVz6SurcKjM6dRwW++v/j5+m5tJF8x6w+FeXqNw3tyQV8uHNioVNjcOsY46H2fpCBQzMQpw3m0thoUarcNwS9iqsSyTgaM0IMrhheA5GTKREu+xFik9nfcaoUXw+d8L42mVCptKk8aEJ9OFSq4T4RSqoD6lxovxe4IxZTtLtZyxlgSisNx+vlwK8qUKKT416IGxBBKMANScnKmUZddcfauaGkyxrQnJ59219i162Oxxc6h7BX3xmOUm2JHz4rWb6Nim/DIHjfr7gevv6/Qmx5tyI5bjSykW3uE5F19OC69Vdq0plA9SyONQmG9dmyjDD+rsNLHdenx0y6aGugGvqhObQsZHdCJSVgjoqZEFjlsRHWf62CyhTd8sqPMuEV4sbnDJo9qpB+0J4CEtu2YpthpaaMtxdTQO2exF7Yg0mOUYUHo6e63hGIcokE0tgN6A2FI4KRizCEqlp0ZMP6BF3pz7ItZCexv256Y6ACRmmTQPzuhL63xyXcS+QaR0Fq3FxEV9aJq71mti0v9Go+F0AekOLeBVV5LgCGStUFMUOUFZrReZjWycubJU9VZ3/SKZsL9kDbd+RIvXTeA6sVJTbGT4ENbZcdgeIpCw5qCItENm/4S1LGqZsDpgdClkQSav7EaCVE2kUAJBXjjEcjltax+dxpbCjhZzS6E3QI6tC5lDdllW8KrlU+QRLYW7xzKoPw3xJv1mnXhTHC5c81IeOWWW21G0QEoNTyhs+wRJUUVNHmnZjKJGVqulMnuzb7Wf/kl4nlg2oi+hpoPFIkuoOyrACPBCyVxFj/7K9zxI5lmNmgsawXKDDXtgHZvqW5Pq/LJYUZJcIdVULUX4WIqMEis5+VwF/WwsnEAK07TGFuIEndxw3axDCLlLfPHEiLCRvKcsxtEii2QUjrp7JAMrhpQDT88ZN72L8Hc+S9X3JyG9RjS9mIVryXN78BnpDJV0RXxNWQrgcCGtbwcVIA3lVHIy/x+iayGtbbuqp0mU4lAjhfWnLk6DlbadWCXJpz3IbLdD0FhgX52zUNBQXMVaUSqx8RN0I8zABUIIgkVq5A5VK6dsaq8tqJCle+t0jrmQV3DFm30jCJMJU+ElBlcgWWjoYbH1dmBDS7i1xPvadi1ubUmSygGkgzGw7lBRYYRcXoWvhVFtNfRKEV6zU+iVtXHVK5qwWf6URXx0FWU2S3WKlQmdT8SHDh+AE6yTC309U82H8Sl6LqQpQd4OS+oU8ScdMg0Mmypozkw7iW+hQ0RyYSER5lfhGBrol0pIWntReBApjNASK6Pp/L2pR8pdd45Tc52CTnm+nMJl6oZCi7qQaQFCzvAVWPmIzQbI6/qwdruqsmmuhqxL0FBARu+8AEPRJkO3xEXNTcB+G0F4c0MJGsg2CliR28s1NDf2LWnK5gYDoAZdXS4YTRhQ7g/wyCQL+bF8vLOzy+SymiW7Tk6xublYRt5W24fmwNWdG+gkYsnYnUsUt1A98nSURY+tU4/ku1ULBRZZMvYEOd4Q/WH7S0JPIkRMRzVvCqwn3BXajaQ8g3Z3yrDLZCjaz0TLdrgMLSn4ddXLspsIEsQiF3Te+9aw6EWUcXJJ5ttj5RncbzJxHWpboyoxqphzZQobc4ikFnb/QEd1/gjpAWRn9PlTvrrONtwECd2MxjhxE04RZH/HmhVeqTZ1YCmAt5IAaE6shUZFJU1yAJhYTSDSD0ldanJh61Vp45wcuiujx1ptdUKtIeQms2muWMTXV9lh2DotQ91u550wYc9ldg5TofNCbUgLr0YjPJioLWClegua49WNsff3LuQRXot3UCoCywlrqRp0PCO2oo4aKB3d4xFxeTqE/m+kYk2K1+md61jRJpGd9fN3Fqp0scwOFXOJkPeprPQxUlx0kp2WmTuLT3XiEDiUOhyqm5eApBk8TXeh44S6TNjWMjxoRQ0W1ZkJ4w35t8zjvOJq6NvqINKSFWxEYiHzShGFW6DOZVk8A6cIzdfAG6FCsG1uSdFX5viCwCbDQhFE9eZN8mEDa8k8X5rV3qVlYqDGsJQZQXoaSIZ6gvMH0RQrxTwZKaNRFs4j+YjeYGrbxo5E1fJ8OxiZUmzoMrIQ9xJLWJxvtP+7XVhfqO77wQMQdKwuM2kiMv5GO9k0uqBEf7zcBQj3iCSUXDsEB4cfj6H3EY2PDZkXe5P5Nkyv1zp9TPEj8pdY2GNStmYGruoRNaWVGnvcIOyffxke+ln58hstGcNKkzPnHP4T/rDUEnVza6HWHNvCBlqgM18o1w1rLUqgLNWFRYVvRrj/VFErQb0YwVKPhDZ1pLBCFtMUCFKwTuQeGkTvdFuNKu3EBV/V7MZoM7awFkLsKSZ7idvBOPD1jPUtmQw/2rBOV3X3viaojR0s5PC2O90mPUyf4wOtwnw1wHybXdii7tI/eoN16oi0JcmedfiDJTVpJ8qmqCaJGHKO/MQ29JhcygK0QR9LTYKF4+rOGLbqVIvrFIqTV3dL8VpT5sLxieDClKUaMVpngJ58/ZW+tYbdKu5ciFVNIW79DCgrY6UACv1j5IKQ7UHVTmZ+REkzh30lZ7k3bSnTXUB8Dd8W2n6KjGTSi9bBaJUJJA6wBaZMIQRCohtAoqh9aLGQH/n8Mvb8tJIfvdgbSEtMYvtVbWwaq6Sj8HPIMYWlRYyE7T7Fklo0Xwbd7SNB2zgzuqWlKkYLnoJtidEWzUNhrAPGaTRBkxsEm2opai6qy3bhBrU9NYGtFJYpcKQ+VWJgw5+AYyGTR9pxvlZbsdC6XFBtFsqwthlXi8sWynAoXK1EGXoijvN6PIlcnNwFSmzkXC3CUc+LfNP6KsWZ7cJ/25h01QvGRC2ZzSyw+U0WdClauahvY1/uxTsWIgPOXWe7GNLIAi+eWJpX6r73AqF6t4jZu/pe2PAdS2CVru4z52xXnzhSxJ7NOHbP2E1CWCim2BwJm25bKKYH2LtmEysvp8Qfdrgt/+SP8QfmRHwm0O62wjeyRoEPpuf40FK7coFB2yWxJi/UJtC6+KNaWeOBJPc6RfZT/oIFOIJvlNh0Hi1mdRNpiVvsAAeK6id+oYG2VJ+WC5Uri6KchcyqyDx5CuevYVWMaIKMeVgqzwpztAUNqywK6uEBoxm5sAVYRPdIbdtRkUU/3EECVPJdPIMNioj1ULTQd3Yp3YuO0w9W5j+QUmGRXa0i8IUtTt4nVgh5tXwKdv4vxFDtuHi29QQWW626jmhs6yRddDLNjondPez216Iq7zrAFMTOEziGuruHGgYuQRH24dM9gz0ao+IbFCM2mReqUa44wlnxuw3GObs4FL9QIjbWRVeVHEOygng5FAfWMkNxGKOAD0BKbGuLPWyxNRuLTeIXG0yGtlLLjq3K5Rm/twHVbVWumGejmg8CQTwzz+TYnZ0CdaKVemwV+NKO36GSVEGXD85SVV50K8xjY+IVpMToGdwNNwrohPckapu1ZaFymQl23IvSbdR/jNuwfxKfMBaKS4ILX6yzs6ce46MOUYI4NnacqclHyyWhcS0CGwJjETB2iiXppX0UaK+qxgn21mhA0iCETLhlokIXC8OTFe0w0msDSslpo3my0pFQjPTzGN4AdoFE7gSPW2krGyNU6FvrMWdYA1l/I+4iPAkkTZSxfZ9schP9JxSaYN8y7JRm8mabmA8S2BZsnecz4iqTz0RJWCoCg8+S02xh8hKrEQqrOeiYuFiPujmHFeP0Tiv5z9G426XltHRolTBLTyKDiR/ksc6korMMxWh2GENhWugH6W1AD1iKciHd0P11gtMarUgg32rfWFN1iA9oNuOHaMgHsQgFxGvmXgPCTu+MQ0KRVcLWNW/gV/GNHPboQzS1wzfQr1K/BqV1wQPprw/0OGC30MY/foez2J6Q8Fez/qOOp0//zfaw9440HU+fPrU9FFHyQ9r58qntwQNxRD929MT2oAdHD+7Le//Vdr9XHFE9/Etbnzi6T899ZRPxdZ+xa4oYS8HvDjr+D1BLAwQUAAAACACHTuJAA4YgmeYBAAARBAAADwAAAHhsL3dvcmtib29rLnhtbI1TUW+bMBB+n7T/YPk9GEjShSikCk3QKjVVlWbp9jQ5cASrYCPbjEzT/vtsCOmmTRNPx52/++7uu2Nxey4L9A2kYoKH2HNcjIAnImX8FOJP+3g0w0hpylNaCA4h/g4K3y7fv1s0Qr4ehXhFhoCrEOdaV3NCVJJDSZUjKuDmJROypNq48kRUJYGmKgfQZUF8170hJWUcdwxzOYRDZBlLYC2SugSuOxIJBdWmfZWzSvVs6bEtdOVs4Og0lXISTsDm+R65QPBykbECDp0GiFbVIy3NpOcCo4IqvUmZhjTEY+OKBt4CU4xkXUU1K8xrMHZ9TJZXWZ6kcaw+BwaNeotbFzWMp6J5YanOQ+wHE9eo3sU+Ajvl2izCH/uu5SO/cbQTGa7WIt52+Wzl9MyOrL03jfimqzkzH/I+9VqGPi2hRfIkkTUW6AWe6wcWAWf9oHRrUS1ZiH9E01nkjgN/NIm9eDTxAncURTeT0XQdj6cfvPXdZhr/7KU+W8bsqnR/ASVLpFAi004iStIt7q8b8GakzQaqa2lOa7no2OY2Gl+i12DWBS6j/1FgvlvbUS7Z/wM+m9MuYCA4PgwE3j1u99uB2IfN/utLPBS82kbr1XD8ardbfdlvPvclyD8FJWbn5rj6zZP+b17+AlBLAwQUAAAACACHTuJAmbqtXwQPAABEnwAADQAAAHhsL3N0eWxlcy54bWzlXeuP21gV/47E/2BlBR8QM85zknQnUzrTWlppQSu1SEiAKk/izFgk8eB4ynQRUmG3FBYtElpgYbUSy65K+UALLIhW+/xnmuz0E/8C514/7rnxdXwz8Y3t0pEax/F5/865D19f714+G4+0W5Y7tZ1Jr1LbrlY0a9J3BvbkqFf59g1jq1PRpp45GZgjZ2L1KretaeXy3pe/tDv1bo+s68eW5WnAYjLtVY497+SSrk/7x9bYnG47J9YEfhk67tj04Kt7pE9PXMscTAnReKTXq9UdfWzak4rP4dK4L8NkbLo/OD3Z6jvjE9OzD+2R7d2mvCrauH/ppaOJ45qHI1D1zO2GnOEwxnps911n6gy9bWClO8Oh3bdiGtZ2dNe6ZRPvdCt7u5PTsTH2plrfOZ14vUorOqX5v7w06FWatYrmG33gDECNm9rXtBe+/sIL1Zvai+T4e1v421d/eOp4L275H/SKb9zUKnooCvOtL/L1if77+X3/AIuJ/YSlxn70T0gp0VhUIpC6XV2wj53guF++vNzI5iL/mLLUeyH32K+BnYm/r6JMrb3Da1OlbEl09AAJe7tDZ8IAAbH3z+ztTl/VbpkjSKkaub7vjBxX8yAzABH0zMQcW/4Vs0e/evrpW/SqY9OdQkL5hI0mOUfTKbhybAO4qXgiNSapTn5ifOf3Hy/hq2MWh0RQqPAOYeMr7B4d9iqG0ey0mwf72XBH7gi4G/RfNtw7Md3X5B55Ja53tVPtVg+y0Ttz7pHe1ZhH1tSb58zg9vTjzwHJVJoAxslwE5heJf+ycazA/Ay5U92ZCy6acepszRqizNYVwh0hZsFdF2bBFScRnFfgfIpLnxiLhsFjMaFg0yiml+sUgR2AZ2cBEOsJ5N3P+c4w4pm2nrBD7E5UjYOmryHlyZps02djafHgtQ3yJyVSMniceS3CmWvZMzaPk0Z5b0wacqaa0C1BZcNoGND1AueycpMhKpFpQQ+ECGyow0lcoHGlfXWxhVNqoagXtJ7AJfHbnHUrdaglU3yJYTBgrWUbtiXCugdQmzPNgqXCdlrqLQvCpbx1Uw8LVpgu2ueLF4U1OzKksUhpD9eUsAQ/tE+9ENcVPLMi54TKFXQbgqEG/ZjCINkejaIZmwaZsiFn9nZh9siz3IkBX7Tg+MbtExieT2CiizQ+un9dytVHrnm7VqddATmCqTOyB0SLowM6KRAbYx8GP9iTgXVmwYzSDp0I0JHCssolyLq2b1SNK8RG9bJIy3NAR8mbkHVw0O1uyK66AX+bkXWlRf42I+tg55pxcG0zsgAZ7c3JurbfVY3DoOGh+aoQ7pEYzbPJPHR1u93tdju1nU6n0202apuX3wL53Uanu1MHNaqqoRq3vwHi261Wp1Xr1ps11SUgkL8hM1uVfMOM5OcSZiQ/lzDTPrj6bIZ7DblmM5KfS5iR/FzC3Fbc5gVFo51zmJH8XMKM5OcSZjonqT6b4bZ5rtmM5OcSZiQ/lzBvqAsAKwxyDTOSn0uYkfw1w0wHzzBcP3TcASxH0YIlFo0dGCr75/Z2R9bQg0Grax8dk0/POSFDWMfzYAHH3u7ANo+ciTmCQz2kCD8JJaxjgSUrvYp3DEtOwol789RzgjvyOrko4J56LdWBqpB6KagZapl6rW/MBW2JzSSkWhRQ7Ldg1EfnA3Rm19qujTNHDgbuWYRvqQyht+MUzGRJAhRQCdjBJVSCJHOmTRQAScossIOQgIIlqUDZVGfLWkSwlzS6iF5XiUpJt6AckaQokCMlNS6SjRByUCd3xcNiVzB1hH7BTT8rXcJL441GkWK/TGVhjVtGgFoAZKNERZFkipoVHyTwv5/6kgzyqRMZ+TFjG8F3qX2LYmq+zBFIY4SWZRQItOtkshKUC/UOJoNgNXU4fKTzEtL9kCT6tZIjiek6QYiye03fijEBTKFIrS3jooYn0TEMrqIaXJuazJsD+oW1WcXklXIjDYYrREMoN97Ir5VNATsp4Oauj6QCDNiSBKgLIUmRhc/36+SPzOdLz4AwCkkbGYGsjYxC1sYwB+ETl7nQk2NrYJ+Oo6msAP/+YhHFIqJmq0luPDfbzWq72arv+D6XlR3awU3IBWnDlu7KhhBRyIUQEUiGEFFkYSNbdiprI6KQsxERSNqIKFa1ceCcwoN3ER6DSCKGggqeShO3M5VEYGkqjaytKSkplmMYsKqfLviDiWkyW50+wcvLEWYKl+/pNnOXL1MjmDyHufi+NRpdJ5Pm3xlGE/JN8hzk2RA9mAiPjJJnycizj+QQ1tMFh/7ku/9lb9cc2UeTsTWBx9ss17P75OG4Pny1XFqoz4YLbJv0UcM0vpp5cjK6bYB8Kt3/Biqwb/v0hgL7fiXUg516xXU8q+/RR2CrYN7KqtKnFkuhKtywSQ9WMZxKn6MthVOb9NHcUqiKkrUGt+ITstUHwLdOx4eWa9AHuFmyGJvOLqwy3FYumcqoJEKVYCWxDqbQapXgZa6iKahZ2KukKIjL9lIVcwRCHbkVDplb4csyr+apMqlnJfMyqWsileuAGGk3qwVvnXQTiq4j6R+IdGysAlfFfkzScRUVN9DXAnXCDgw8dRG5FQ5ZEWhAqi2Bp2JHkk0jgmDDIdIKsik/rVBjz2uVq69Qew4KIl9BVufnq6T2EB5LXqaVAVFn/SS1KCOVI0QZHCLPQSYs8dxGdUQtHgSa6bi8pOyrH7ChItJAbRzEvaBKokauxoW7UK5ETQhse1NUX6JWowbBL2jEsZYQ/YJqiSMOxyXQkusoFCp7cMS5JrqwWnJNdqG0xLgsbtODtSxu24NwSYbdBc1xrGVx2x4U8Xpx2x6sZXHbHhxx0LgEuASNC6oljnhx2x6sZXHbHozL4rY9WMvitj0o4mTEW/zsIVNPBdUSRZwMekugZXHbHoxLOM7Xlzq+T+/ftUc37Ntky5vVb9hrZ8OL3rmHRA2naMmhaOIbzof8/dkq/w4+2T7XDO/PS64TQNLQfBOc5YIilhbIpvN2QEznzfaD6afwO5rHu4h6wSbC/s1haQX5m4KhKqGTNqB2bl49dlz7Vbj5iZaHrA4ENKe3ASA8ryprP3LNkxvWGSyt8RcvxdboIJSgGUqucQHsKsg9KZevpD+q6OXRnysu0hFQWFyyj4u0VZkURyn9YW2eviwVcEcLN0OAq1KkQpL+EIri6k/u2QWrEJP0hxTn9S9VIsCwXNiVAmt5qzJPBLJstxJvhFcqr0kxAat87QFcgtuWa/d8fKZ4gSffiZNK+ItayvU9VFuKe85KrYJIsa51ZBXYSuOXOfqCNcJr4g8tf+CiAucVZE9shXM6giTqF0wm8bo+F/ULDOetyhxBKusXuRv/f1LAlJu6sQpWzAoAWqX1YGIVIPNcyabagp7CvgpZFaI42RUbUJY+fGIECt2Jl0gBVoXg4iL3OFCPl6s3sDuvihy4QJcDeZv0PkTztGp0xd3TUjfOG2uxuD63+qBkU0RJqgpRVZZmLCkr1OufRVYkaa9+yJaF9ongUa9+RuiHvo4Q/erTNxP/Q08nJ/UV+78c2UuWJgv9r179bPyP+j9c61VTP2GZjQFksCKMgPoKpDSB1auv2P8bGAJkEgCAvRA/NTURWG8EQIYlYm3LMmYnhUVsQVkG7ckWlGXUnjTNXkjIJ+KliPmZqCwMshRMqa1XTMCB4kxUo2zW8wkErWL9y1ILEw0oSylMNEDNDTuMoGx6Lyhf+e5vWfrviRFQk8PrFZxEb6u/u7gGXMgMTcqaFfLEFV/eS3XTNyku9bIU0kQDCl1IZYAV61IWH1gyZsVm14pvFqR4ahkAHPJloEh3fiXiEtP/+QgLNJLFDYsMrgrdnZLAVXwuqPjAkjArhqviWyWBtjIGS2wWnGVrIJ8fs7iRSj3H2rDCEvuUUBSpnZTBUizzczaAPlwIjxOi3YD5vYCjhw+1iTmG1+vNnjw5f/A6ahcPT+0RvOXCf5oQAhsjePO1p5++OfvFz5+989uQDIYHiKxBdgheJDv/94PZk5+GBNAdRwR0D/RFgi/++BkImf89EkLQznSjb3NepJkh3b5b/X4oDTqZiJK+IHiR0lcP0UAPCNHQt83GaP5z99lbn81/fT+UA2BANPQVIYs0s8cfnj/6/Nnbj7545/XzRXrIYERP34m5SD//11+f3XsjFAiTE4gACpvI8Q//MvvNG/Pf35u/+7eQDpo0TEcfF4tJeu/es/f/EFKQoolJhO4/f/ABKDe/84CXRjeXQpET4mNOxWnRQJPu9cSIYI5PYFtAFA3uajxGYMvcZKJoQEVupWDThHELJMGlfgeSzP1jImGwzj97a3Y3QgeZpkQkMFUgUI6Q3PsoksIjAobhIpJHf/7i0dsRCY8J2LZEQDL/4M78T/dnb/5udve1+XufRLQ8LmCvTgGtD/kYLd1rhsWrLszp+T/vze98HIojswrYIUJMze5/Gl3PV426EBKzx4+i63k0QAMpMufOz54+eRiR8FiAXX8FJLNPPjr/x2uA8dnDt5+9/+75Lz9ksCWbXGKbhLioV7+ibWlL2fBYgc0UBHo009nw+IHdDgRsdtLZ8JiC7QgEbATmRHlJNqBFXmkIgZXolYgN3VOCYQz2dxTokegVxobHXUOIu0SvMDZwhI0SwzGOlajwgBs4BkJ8JnqFseEx2xBiNtErjA2P3IYQuYleYWx45DaFyBVgJaqsDR6zTSFmE73C2PCYhT3fV8EKY8MjF95yIGCT6JWIDbgBh7opRK7AKxATv70BN3AMhJhN9Apjw2O2KcRsIlYYGx65TSFyE73C2IB/UAY1hcgVeAUgFngFWGEGQswmeoWx4THbEmI20SuMDY/clhC5iV5hbHjktihy2aYh0LX3THhxC33TR9S3B3wNrKF5OvJuRD/2Kuz4m/TlQxD94KpX7FuOR1n0Kuz4ZfKqbr+rBfsIvDyF92vDp3bq2r3Kj6/tt7tXrxn1rU51v7PVbFitrW5r/+pWq3mwf/Wq0a3Wqwc/gciMR5PppbNas1c59ryTS7o+7R9bY3O6Pbb7rjN1ht52H94A7gyHdt/SpyeuZQ6mx5bljUd6vVrt6l19bNJ3fgOTS9MRXOUGxgbKX2fnehX0xVefZKgOavv/UyP0KXktynUiZO9/UEsDBAoAAAAAAIdO4kAAAAAAAAAAAAAAAAAGAAAAX3JlbHMvUEsDBBQAAAAIAIdO4kB7OHa8/wAAAN8CAAALAAAAX3JlbHMvLnJlbHOtks9KxDAQxu+C7xDmvk13FRHZdC8i7E1kfYCYTP/QJhOSWe2+vUFRLNS6B4+Z+eab33xkuxvdIF4xpo68gnVRgkBvyHa+UfB8eFjdgkisvdUDeVRwwgS76vJi+4SD5jyU2i4kkV18UtAyhzspk2nR6VRQQJ87NUWnOT9jI4M2vW5QbsryRsafHlBNPMXeKoh7uwZxOIW8+W9vquvO4D2Zo0PPMyvkVJGddWyQFYyDfKPYvxD1RQYGOc9ydT7L73dKh6ytZi0NRVyFmFOK3OVcv3EsmcdcTh+KJaDN+UDT0+fCwZHRW7TLSDqEJaLr/yQyx8Tklnk+NV9IcvItq3dQSwMECgAAAAAAh07iQAAAAAAAAAAAAAAAAAkAAAB4bC9fcmVscy9QSwMEFAAAAAgAh07iQMhs2XLsAAAAugIAABoAAAB4bC9fcmVscy93b3JrYm9vay54bWwucmVsc62STWrDMBCF94XeQcy+lp2WUkrkbEoh29Y9gJDGloktCc30x7evcCFxIKQbbwRvBr33zUjb3c84iC9M1AevoCpKEOhNsL3vFHw0r3dPIIi1t3oIHhVMSLCrb2+2bzhozpfI9ZFEdvGkwDHHZynJOBw1FSGiz502pFFzlqmTUZuD7lBuyvJRpqUH1GeeYm8VpL19ANFMMSf/7x3atjf4EszniJ4vREjiacgDiEanDlnBny4yI8jL8ferxjud0L5zyttdUizL12A2a8JwfiM8rWKWcj6rawzVmgzfIR3IIfKJ41giOXeOMPLsx9W/UEsDBBQAAAAIAIdO4kCo8VpzZwEAAA0FAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbK2Uy04CMRSG9ya+w6RbM1NwYYxhYOFlqSTiA9T2wDT0lp6C8PaeKWACQYGMm0k67fm///y9DEYra4olRNTe1axf9VgBTnql3axmH5OX8p4VmIRTwngHNVsDstHw+mowWQfAgqod1qxJKTxwjrIBK7DyARzNTH20ItEwzngQci5mwG97vTsuvUvgUplaDTYcPMFULEwqnlf0e+MkgkFWPG4WtqyaiRCMliKRU7506oBSbgkVVeY12OiAN2SD8aOEduZ3wLbujaKJWkExFjG9Cks2uPJyHH1AToaqv1WO2PTTqZZAGgtLEVTQtqxAlYEkISYNP57/ZEsf4XL4LqO2+mLiApO3lzMPGpZZ5kz4ynBsRAT1niKdSOxMxxBBKGwAkjXVnvbuqByLvfWR1gb+3UAWPUFOdKmA52+/cwBZ5gTwy8f5p/fzzrDDtCn1ygrtzuDnLULafarp3vW+kba/LLzzwfNjNvwGUEsBAhQAFAAAAAgAh07iQKjxWnNnAQAADQUAABMAAAAAAAAAAQAgAAAArUMAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAAKAAAAAACHTuJAAAAAAAAAAAAAAAAABgAAAAAAAAAAABAAAAAWQQAAX3JlbHMvUEsBAhQAFAAAAAgAh07iQHs4drz/AAAA3wIAAAsAAAAAAAAAAQAgAAAAOkEAAF9yZWxzLy5yZWxzUEsBAhQACgAAAAAAh07iQAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAQAAAAAAAAAGRvY1Byb3BzL1BLAQIUABQAAAAIAIdO4kDOQlwBMQEAADkCAAAQAAAAAAAAAAEAIAAAACcAAABkb2NQcm9wcy9hcHAueG1sUEsBAhQAFAAAAAgAh07iQD3HboFTAQAAZAIAABEAAAAAAAAAAQAgAAAAhgEAAGRvY1Byb3BzL2NvcmUueG1sUEsBAhQAFAAAAAgAh07iQEWDrRdyAQAAIgMAABMAAAAAAAAAAQAgAAAACAMAAGRvY1Byb3BzL2N1c3RvbS54bWxQSwECFAAKAAAAAACHTuJAAAAAAAAAAAAAAAAAAwAAAAAAAAAAABAAAACrBAAAeGwvUEsBAhQACgAAAAAAh07iQAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAQAAAAYkIAAHhsL19yZWxzL1BLAQIUABQAAAAIAIdO4kDIbNly7AAAALoCAAAaAAAAAAAAAAEAIAAAAIlCAAB4bC9fcmVscy93b3JrYm9vay54bWwucmVsc1BLAQIUABQAAAAIAIdO4kCwn+lszhUAALZwAAAUAAAAAAAAAAEAIAAAANQZAAB4bC9zaGFyZWRTdHJpbmdzLnhtbFBLAQIUABQAAAAIAIdO4kCZuq1fBA8AAESfAAANAAAAAAAAAAEAIAAAAOcxAAB4bC9zdHlsZXMueG1sUEsBAhQACgAAAAAAh07iQAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAQAAAA7xIAAHhsL3RoZW1lL1BLAQIUABQAAAAIAIdO4kD4/hwQjQYAAJgbAAATAAAAAAAAAAEAIAAAABYTAAB4bC90aGVtZS90aGVtZTEueG1sUEsBAhQAFAAAAAgAh07iQAOGIJnmAQAAEQQAAA8AAAAAAAAAAQAgAAAA1C8AAHhsL3dvcmtib29rLnhtbFBLAQIUAAoAAAAAAIdO4kAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAEAAAAMwEAAB4bC93b3Jrc2hlZXRzL1BLAQIUABQAAAAIAIdO4kDfzseOwQ0AAL84AAAYAAAAAAAAAAEAIAAAAPgEAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxQSwUGAAAAABEAEQAHBAAARUUAAAAA'
@@ -1058,6 +1083,7 @@ function fixNumInput(el) {
 }
 
 const st = {
+  areaIsTotal:false,
   brand:null, maintenance:false, mix:null,
   pinCount:0, plateCount:0,
   cats:{}, muscles:{chest:0,back:0,legs:0,shoulder:0,arms:0,core:0},
@@ -1074,11 +1100,11 @@ const st = {
   advancedSet:new Set(),
   funcToolsSet:new Set(),
   cardio:{treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}, cardioFail:false,
-  layout:{zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null},
+  layout:{zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,hygienePenalty:false,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null},
   styling:false,
   lockerStorage:0, shower:0, lockerDesign:0, restroom:0,
   scanner:false, access:false, aed:false,
-  staffAttitude:null, upkeep:null,
+  staffAttitude:null, upkeep:null, smokingPenalty:false,
   trainer:false, groupClass:false, freeTrainer:false,
   water:false, cafe:null, openHours:null,
   membership:false, priceMatch:null, specialMembership:false,
@@ -1189,7 +1215,8 @@ function specialBarCount() {
 }
 
 function engine() {
-  const s = S()
+  const s = B()
+  const actualArea = S()
 
   // ratio: r = min(pin,plate)/max(pin,plate), balanced means r>=0.6
   const pin = st.pinCount, plate = st.plateCount
@@ -1262,13 +1289,18 @@ function engine() {
   // layout — null fields = 0
   const lo = st.layout
   const ftScore = st.layout.funcTools ?? funcToolsScore(st.funcToolsSet.size)
-  const layoutRaw = (lo.zoning??0)+(lo.circulation??0)+(lo.ceiling??0)+(lo.crowd??0)+(lo.funcSpace??0)+ftScore+(lo.rest??0)+(lo.odor??0)+(lo.ventilation??0)+(lo.hygiene??0)+(lo.flooring??0)+(lo.visual??0)+(lo.audio??0)+(lo.mirror??0)+(lo.atmosphere??0)
+  const hygieneBase = lo.hygiene ?? 0
+  const hygienePenalty = lo.hygienePenalty ? -2 : 0
+  const hygieneScore = hygieneBase
+  const layoutRaw = (lo.zoning??0)+(lo.circulation??0)+(lo.ceiling??0)+(lo.crowd??0)+(lo.funcSpace??0)+ftScore+(lo.rest??0)+(lo.odor??0)+(lo.ventilation??0)+hygieneScore+(lo.flooring??0)+(lo.visual??0)+(lo.audio??0)+(lo.mirror??0)+(lo.atmosphere??0)
   const lockerRaw = st.lockerStorage + st.shower + st.lockerDesign + st.restroom
   const envBase = Math.min(layoutRaw,20) + Math.min(lockerRaw,5)
 
   // service
   const infra = (st.scanner?0.5:0) + (st.access?0.5:0)
-  const staff = (st.staffAttitude??0) + (st.upkeep??0)
+  const staffBase = (st.staffAttitude??0) + (st.upkeep??0)
+  const smokingPenalty = st.smokingPenalty ? -3 : 0
+  const staff = staffBase
   const trainer = Math.max(st.trainer?1:0, st.freeTrainer?1:0)
   const water = st.water?1:0
   const pricing = (st.membership?1:0) + (st.priceMatch??0)
@@ -1291,20 +1323,21 @@ function engine() {
   const hyroxBonus = st.hyrox?0.5:0
   const funcAreaBonus = st.funcArea?0.5:0
   const poolBonus = st.pool?2:0
-  const bonusTotal = stylingBonus+recoveryBonus+hyroxBonus+funcAreaBonus+poolBonus+aedBonus+groupBonus+cafeBonus+specialBonus
+  const penaltyTotal = hygienePenalty + smokingPenalty
+  const bonusTotal = stylingBonus+recoveryBonus+hyroxBonus+funcAreaBonus+poolBonus+aedBonus+groupBonus+cafeBonus+specialBonus+penaltyTotal
 
   const grand = baseScore + bonusTotal
   const GRADES = [{g:'SSR',min:95},{g:'SSS',min:92},{g:'S',min:88},{g:'A',min:83},{g:'B',min:75},{g:'C',min:65},{g:'D',min:0}]
   const grade = GRADES.find(t=>grand>=t.min)?.g||'D'
 
   return {
-    grand, baseScore, bonusTotal, grade,
+    grand, baseScore, bonusTotal, grade, actualArea, standardArea:s, areaCapped: actualArea > s,
     brandC, mixC, ratioC, r, pin, plate,
     catScore, covScore, covEarned:coverage.earned, covMax:coverage.max, fixedRaw,
     rope, smith, smithOk, basicDetail, basicSum, allMaxBonus, advScore, advCount, adv1Auto, adv1SpecialCount, freeFull,
     cardioTotal, cardioTypes, cardioBase, cardioScore,
-    equipBase, layoutRaw, lockerRaw, envBase, ftScore,
-    svcBase, aedBonus, groupBonus, cafeBonus, specialBonus,
+    equipBase, layoutRaw, lockerRaw, envBase, ftScore, hygieneBase, hygienePenalty, hygieneScore,
+    svcBase, staffBase, smokingPenalty, staffScore: staff, penaltyTotal, aedBonus, groupBonus, cafeBonus, specialBonus,
     transportRaw, lifestyleRaw, surroundBase,
     stylingBonus, recoveryBonus, hyroxBonus, funcAreaBonus, poolBonus,
     ropeBase, smithBase: Math.floor(s/500), sqRackBase, benchBase, adjBase, deadliftBase: dlBase,
@@ -1312,7 +1345,9 @@ function engine() {
 }
 
 function update() {
-  const s = S()
+  const s = B()
+  const actualArea = S()
+  const rawArea = rawAreaInput()
   const res = engine()
 
   renderMuscleTable(s)  // 单点驱动肌群徽章刷新，不依赖用户是否触碰输入框
@@ -1325,6 +1360,8 @@ function update() {
 
   // area preview
   document.getElementById('area-preview').innerHTML = [
+    st.areaIsTotal ? `当前输入总面积: ${Math.round(rawArea)}㎡ → 训练区按80%折算为 ${Math.round(actualArea)}㎡` : `当前训练区面积: ${Math.round(actualArea)}㎡`,
+    actualArea > 2500 ? `基准面积封顶: ${Math.round(s)}㎡（超过2500㎡仍按2500㎡计算标准）` : `基准面积: ${Math.round(s)}㎡`,
     `绳动基准: floor(${s}/100) = ${Math.floor(s/100)}`,
     `史密斯基准: floor(${s}/500) = ${Math.floor(s/500)}`,
     `有氧基准: max(5,floor(${s}/100)) = ${Math.max(5,Math.floor(s/100))}`,
@@ -1342,7 +1379,7 @@ function update() {
   document.getElementById('nv-locker').textContent = res.lockerRaw.toFixed(1)
   document.getElementById('nv-service').textContent = res.svcBase.toFixed(1)
   document.getElementById('nv-surr').textContent = res.surroundBase.toFixed(1)
-  document.getElementById('nv-bonus').textContent = '+'+res.bonusTotal.toFixed(1)
+  document.getElementById('nv-bonus').textContent = (res.bonusTotal >= 0 ? '+' : '') + res.bonusTotal.toFixed(1)
   document.getElementById('nv-final').textContent = res.grade
 
   // ratio display
@@ -1483,9 +1520,10 @@ function update() {
     {l:'造型室',v:res.stylingBonus},{l:'Hyrox',v:res.hyroxBonus},
     {l:'超大功能区',v:res.funcAreaBonus},{l:'泳池',v:res.poolBonus},
     {l:'恢复设施',v:res.recoveryBonus},
-  ].filter(b=>b.v>0)
+    {l:'卫生脏乱',v:res.hygienePenalty},{l:'抽烟管理',v:res.smokingPenalty},
+  ].filter(b=>b.v!==0)
   document.getElementById('bonus-detail').innerHTML = bonusItems.length
-    ? bonusItems.map(b=>`<span class="bonus-tag">${b.l} +${b.v.toFixed(1)}</span>`).join('')
+    ? bonusItems.map(b=>`<span class="bonus-tag ${b.v<0?'penalty':''}">${b.l} ${b.v>0?'+':''}${b.v.toFixed(1)}</span>`).join('')
     : `<span style="font-size:0.73rem;color:var(--text-dim)">暂无加分项</span>`
 
   renderBarbell(res)
@@ -1839,7 +1877,7 @@ function originalTableRows(res = engine()) {
   const coeffReady = st.brand !== null && st.mix !== null
   const totalCoeff = coeffReady ? (res.brandC * res.mixC * res.ratioC).toFixed(3) : '未完善'
   const cats = CATS.filter(c => st.cats[c.id]).map(c => c.l).join('、') || '未勾选'
-  const muscleNote = MUSCLES.map(g => `${g.l}${st.muscles[g.id] || 0}/${muscleBase(g, S())}`).join('，')
+  const muscleNote = MUSCLES.map(g => `${g.l}${st.muscles[g.id] || 0}/${muscleBase(g, B())}`).join('，')
   const muscleDetails = muscleDetailNotes()
   const barTypes = checkedTexts('barbell-bar-types').join('、') || '未勾选'
   const barEls = [...document.querySelectorAll('#barbell-bar-types .chk.on')]
@@ -1851,7 +1889,7 @@ function originalTableRows(res = engine()) {
   const comfortScore = (lo.odor ?? 0) + (lo.ventilation ?? 0)
   const visualAudioScore = (lo.visual ?? 0) + (lo.audio ?? 0)
   const infraScore = (st.scanner ? 0.5 : 0) + (st.access ? 0.5 : 0)
-  const staffScore = (st.staffAttitude ?? 0) + (st.upkeep ?? 0)
+  const staffScore = res.staffScore
   const trainerScore = Math.max(st.trainer ? 1 : 0, st.freeTrainer ? 1 : 0)
   const waterScore = st.water ? 1 : 0
   const pricingScore = (st.membership ? 1 : 0) + (st.priceMatch ?? 0)
@@ -1866,10 +1904,12 @@ function originalTableRows(res = engine()) {
     `团课加分：${yesNo(st.groupClass)}`,
     `咖啡/轻食：${selectedText('#cafe-opts .opt.sel')}`,
     `特殊卡种：${yesNo(st.specialMembership)}`,
+    `卫生脏乱扣分：${res.hygienePenalty.toFixed(1)}`,
+    `抽烟/电子烟扣分：${res.smokingPenalty.toFixed(1)}`,
   ])
   return [
     ['健身房测评表V2.0','','','','','','',''],
-    ['健身房名称', document.getElementById('gymName')?.value || '', '', '', '城市', document.getElementById('gymCity')?.value || '', res.grand.toFixed(2), `面积：${Math.round(S())}㎡；评级：${res.grade}`],
+    ['健身房名称', document.getElementById('gymName')?.value || '', '', '', '城市', document.getElementById('gymCity')?.value || '', res.grand.toFixed(2), `面积：${Math.round(S())}㎡；${st.areaIsTotal ? `总面积输入：${Math.round(rawAreaInput())}㎡；` : ''}基准面积：${Math.round(B())}㎡；评级：${res.grade}`],
     ['测评内容','','权重','评分标准','满分','','评分','备注'],
     ['器械区 55%','固定器械','固定器械整体系数','品牌选择投入度：大部分优质进口1.0/偏混合或优质国产0.95/普通国产0.9/低端0.8；维护差降档',1,'',st.brand !== null ? res.brandC : '',`品牌：${selectedText('#brand-opts .opt.sel')}；维护差：${yesNo(st.maintenance)}；总系数：${totalCoeff}`],
     ['','','','器械搭配成熟度：单一品牌>70% 0.95；主品牌约50%并有混搭 1.00；多品牌合理且特色≥20% 1.10',1.1,'',st.mix !== null ? res.mixC : '',`搭配：${selectedText('#mix-opts .opt.sel')}`],
@@ -1893,7 +1933,7 @@ function originalTableRows(res = engine()) {
     ['','','','功能训练区：空间可用性与工具覆盖',5,'',layoutFuncScore,`面积：${selectedText('#layout-func-space .opt.sel')}；工具：${selectedText('#layout-func-tools .opt.sel')}`],
     ['','','','休息区/开放吧台',1,'',lo.rest ?? 0,selectedText('#layout-rest .opt.sel')],
     ['','','','体感：气味空气、温度通风',2,'',comfortScore,`气味：${selectedText('#layout-odor .opt.sel')}；通风：${selectedText('#layout-ventilation .opt.sel')}`],
-    ['','','','卫生：消毒用具便利',2,'',lo.hygiene ?? 0,selectedText('#layout-hygiene .opt.sel')],
+    ['','','','卫生：消毒用具便利',2,'',res.hygieneScore,`基础：${selectedText('#layout-hygiene .opt.sel')}；场地脏乱无人管理总分扣分：${res.hygienePenalty.toFixed(1)}；本项得分${res.hygieneScore.toFixed(1)}/2`],
     ['','','','地面：地垫覆盖率与厚度',1,'',lo.flooring ?? 0,selectedText('#layout-flooring .opt.sel')],
     ['','','','视觉与听觉',1,'',visualAudioScore,`视觉：${selectedText('#layout-visual .opt.sel')}；听觉：${selectedText('#layout-audio .opt.sel')}`],
     ['','','','灯光/镜面/拍摄友好',1,'',lo.mirror ?? 0,selectedText('#layout-mirror .opt.sel')],
@@ -1904,9 +1944,9 @@ function originalTableRows(res = engine()) {
     ['','','','淋浴：水压、水温、排水、清洁',1,'',st.shower,`淋浴：${checkedTexts('shower-checks').join('、') || '未勾选'}`],
     ['','','','更衣室设计：男女分离、隔断、干湿分离、台面镜凳、吹风机',2,'',st.lockerDesign,`设计：${checkedTexts('locker-design-checks').join('、') || '未勾选'}`],
     ['','','','卫生间：场馆内独立、男女分区、距离、整洁',1,'',st.restroom,`卫生间：${checkedTexts('restroom-checks').join('、') || '未勾选'}`],
-    ['','加分','','训练生态/恢复设施/超大功能区/泳池等',0,'',res.bonusTotal.toFixed(2),bonusNote],
+    ['','加分','','训练生态/恢复设施/超大功能区/泳池及总分扣分项',0,'',res.bonusTotal.toFixed(2),bonusNote],
     ['服务10%','','0.1','基础设施：体测机、门禁、AED',1,'',infraScore,`服务总分：${res.svcBase.toFixed(2)}/10；体测机：${yesNo(st.scanner)}；门禁：${yesNo(st.access)}；AED：${yesNo(st.aed)}`],
-    ['','','','人员服务与维护秩序',2,'',staffScore,`态度：${selectedText('#svc-attitude-opts .opt.sel')}；维护：${selectedText('#svc-upkeep-opts .opt.sel')}`],
+    ['','','','人员服务与维护秩序',2,'',staffScore,`态度：${selectedText('#svc-attitude-opts .opt.sel')}；维护：${selectedText('#svc-upkeep-opts .opt.sel')}；抽烟/电子烟管理无效总分扣分：${res.smokingPenalty.toFixed(1)}；本项得分${res.staffScore.toFixed(1)}/2`],
     ['','','','教练/团课/自由教练',1,'',trainerScore,`教练认证：${yesNo(st.trainer)}；团课：${yesNo(st.groupClass)}；自由教练：${yesNo(st.freeTrainer)}`],
     ['','','','补给：饮用水、水柜、咖啡/轻食',1,'',waterScore,`水：${yesNo(st.water)}；咖啡/轻食：${selectedText('#cafe-opts .opt.sel')}`],
     ['','','','开放时间',2,'',st.openHours ?? 0,selectedText('#hours-opts .opt.sel')],
@@ -2081,7 +2121,7 @@ function templateCellWrites(res = engine()) {
     ['D2', document.getElementById('gymName')?.value || '', 'D2'],
     ['F2', document.getElementById('gymCity')?.value || '', 'F2'],
     ['G2', res.grand.toFixed(2), 'G2'],
-    ['H2', `面积：${Math.round(S())}㎡；评级：${res.grade}`, 'H2'],
+    ['H2', `面积：${Math.round(S())}㎡；${st.areaIsTotal ? `总面积输入：${Math.round(rawAreaInput())}㎡；` : ''}基准面积：${Math.round(B())}㎡；评级：${res.grade}`, 'H2'],
   ]
   rows.forEach((row, idx) => {
     const excelRow = idx + 1
@@ -2216,6 +2256,14 @@ function parseBoolText(v) {
   return String(v || '').trim().startsWith('是')
 }
 
+function parsePenaltyActive(v) {
+  const s = String(v || '').trim()
+  if (!s) return false
+  if (s.startsWith('是')) return true
+  const n = parseFloat(s)
+  return !Number.isNaN(n) && n < 0
+}
+
 function parseIntMatch(text, re, fallback = 0) {
   const m = String(text || '').match(re)
   return m ? parseInt(m[1], 10) : fallback
@@ -2286,13 +2334,15 @@ async function importOriginalFormatExcel(file) {
 
   const name = (cells.D2 || '').trim() || notePart(cells.A2, '健身房名称：')
   const city = (cells.F2 || '').trim() || notePart(cells.E2, '城市：')
-  const area = parseIntMatch(cells.H2, /面积：?(\d+)/, parseInt(document.getElementById('gymArea')?.value || '500', 10))
+  const totalArea = parseIntMatch(cells.H2, /总面积输入：?(\d+)/, 0)
+  const area = totalArea || parseIntMatch(cells.H2, /面积：?(\d+)/, parseInt(document.getElementById('gymArea')?.value || '500', 10))
   const nameEl = document.getElementById('gymName')
   const cityEl = document.getElementById('gymCity')
   const areaEl = document.getElementById('gymArea')
   if (nameEl) nameEl.value = name
   if (cityEl) cityEl.value = city
   if (areaEl && area) areaEl.value = area
+  st.areaIsTotal = totalArea > 0
 
   setOptState('brand-opts', notePart(cells.H4, '品牌：'), v => { st.brand = v })
   st.maintenance = parseBoolText(notePart(cells.H4, '维护差：'))
@@ -2350,7 +2400,8 @@ async function importOriginalFormatExcel(file) {
   setOptState('layout-rest', cells.H24, v => { st.layout.rest = v })
   setOptState('layout-odor', notePart(cells.H25, '气味：'), v => { st.layout.odor = v })
   setOptState('layout-ventilation', notePart(cells.H25, '通风：'), v => { st.layout.ventilation = v })
-  setOptState('layout-hygiene', cells.H26, v => { st.layout.hygiene = v })
+  setOptState('layout-hygiene', notePart(cells.H26, '基础：') || cells.H26, v => { st.layout.hygiene = v })
+  st.layout.hygienePenalty = parsePenaltyActive(notePart(cells.H26, '场地脏乱无人管理总分扣分：') || notePart(cells.H26, '场地脏乱无人管理扣分：'))
   setOptState('layout-flooring', cells.H27, v => { st.layout.flooring = v })
   setOptState('layout-visual', notePart(cells.H28, '视觉：'), v => { st.layout.visual = v })
   setOptState('layout-audio', notePart(cells.H28, '听觉：'), v => { st.layout.audio = v })
@@ -2380,6 +2431,7 @@ async function importOriginalFormatExcel(file) {
   st.access = parseBoolText(notePart(cells.H38, '门禁：'))
   setOptState('svc-attitude-opts', notePart(cells.H39, '态度：'), v => { st.staffAttitude = v })
   setOptState('svc-upkeep-opts', notePart(cells.H39, '维护：'), v => { st.upkeep = v })
+  st.smokingPenalty = parsePenaltyActive(notePart(cells.H39, '抽烟/电子烟管理无效总分扣分：') || notePart(cells.H39, '抽烟/电子烟管理无效扣分：'))
   st.trainer = parseBoolText(notePart(cells.H40, '教练认证：'))
   st.freeTrainer = parseBoolText(notePart(cells.H40, '自由教练：'))
   st.water = parseBoolText(notePart(cells.H41, '水：'))
@@ -2546,11 +2598,16 @@ function exportFinalPng() {
     ctx.moveTo(cx, cy)
     ctx.lineTo(x, y)
     ctx.stroke()
-    const [lx, ly] = pointFor(i, radius + 52)
+    let [lx, ly] = pointFor(i, radius + 62)
+    ly = Math.max(66, Math.min(478, ly))
+    const pct = Math.round(Math.max(0, Math.min(1, m.value / m.max)) * 100)
     ctx.fillStyle = C.mid
     ctx.font = '21px "PingFang SC","Microsoft YaHei",Arial,sans-serif'
     ctx.textAlign = lx < cx - 10 ? 'right' : lx > cx + 10 ? 'left' : 'center'
     ctx.fillText(m.label, lx, ly)
+    ctx.fillStyle = C.red
+    ctx.font = '700 18px Menlo,Consolas,monospace'
+    ctx.fillText(`${pct}%`, lx, ly + 24)
   })
   ctx.beginPath()
   metrics.forEach((m, i) => {
@@ -2610,7 +2667,7 @@ function exportFinalPng() {
 
   ctx.fillStyle = C.dim
   ctx.font = '20px Menlo,Consolas,monospace'
-  ctx.fillText(`FITX Gym Scorer · ${new Date().toLocaleDateString('zh-CN')}`, 90, 910)
+  ctx.fillText(`真探堡健独家V2.0 · ${new Date().toLocaleDateString('zh-CN')}`, 90, 910)
 
   const gym = (name || 'fitx-scorer').replace(/[^\u4e00-\u9fa5a-zA-Z0-9_-]+/g,'_')
   canvas.toBlob(blob => {
@@ -2661,6 +2718,7 @@ function replaceSet(target, values) {
 }
 
 function resetAppState() {
+  st.areaIsTotal = false
   st.brand = null
   st.maintenance = false
   st.mix = null
@@ -2694,7 +2752,7 @@ function resetAppState() {
   replaceSet(st.funcToolsSet, [])
   st.cardio = {treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}
   st.cardioFail = false
-  st.layout = {zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null}
+  st.layout = {zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,hygienePenalty:false,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null}
   st.styling = false
   st.lockerStorage = 0
   st.shower = 0
@@ -2709,6 +2767,7 @@ function resetAppState() {
   st.aed = false
   st.staffAttitude = null
   st.upkeep = null
+  st.smokingPenalty = false
   st.trainer = false
   st.groupClass = false
   st.freeTrainer = false
@@ -2747,6 +2806,7 @@ function resetAll() {
 }
 
 function syncDomFromState() {
+  applyToggle('tog-area-total', st.areaIsTotal)
   applyOpt('brand-opts', st.brand)
   applyOpt('mix-opts', st.mix)
   applyToggle('tog-maintenance', st.maintenance)
@@ -2790,6 +2850,7 @@ function syncDomFromState() {
     ['layout-audio','audio'],['layout-mirror','mirror'],['layout-atmosphere','atmosphere'],
   ]
   layoutOpts.forEach(([id,key]) => applyOpt(id, st.layout[key]))
+  applyToggle('tog-hygiene-penalty', st.layout.hygienePenalty)
   applyToggle('tog-styling', st.styling)
 
   applyChecks('locker-storage-checks', lockerChecks.storage)
@@ -2802,6 +2863,7 @@ function syncDomFromState() {
   applyToggle('tog-aed', st.aed)
   applyOpt('svc-attitude-opts', st.staffAttitude)
   applyOpt('svc-upkeep-opts', st.upkeep)
+  applyToggle('tog-smoking-penalty', st.smokingPenalty)
   applyToggle('tog-trainer', st.trainer)
   applyToggle('tog-groupclass', st.groupClass)
   applyToggle('tog-freetrainer', st.freeTrainer)
@@ -2870,6 +2932,7 @@ function initUI() {
   })
 
   document.getElementById('gymArea').addEventListener('input', update)
+  tog('tog-area-total', v=>{ st.areaIsTotal=v; update() })
   ;['gymName','gymCity'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.addEventListener('input', update)
@@ -2974,6 +3037,7 @@ function initUI() {
     ['layout-audio','audio'],['layout-mirror','mirror'],['layout-atmosphere','atmosphere'],
   ]
   layoutOpts.forEach(([id,key])=>opts(id, v=>{ st.layout[key]=v; update() }))
+  tog('tog-hygiene-penalty', v=>{ st.layout.hygienePenalty=v; update() })
   tog('tog-styling', v=>{ st.styling=v; update() })
 
   // locker checks
@@ -2999,6 +3063,7 @@ function initUI() {
   tog('tog-aed',         v=>{ st.aed=v;               update() })
   opts('svc-attitude-opts', v=>{ st.staffAttitude=v;  update() })
   opts('svc-upkeep-opts',   v=>{ st.upkeep=v;         update() })
+  tog('tog-smoking-penalty', v=>{ st.smokingPenalty=v; update() })
   tog('tog-trainer',     v=>{ st.trainer=v;           update() })
   tog('tog-groupclass',  v=>{ st.groupClass=v;        update() })
   tog('tog-freetrainer', v=>{ st.freeTrainer=v;       update() })
@@ -3087,7 +3152,7 @@ function initUI() {
   })
 
   // muscle table — build once at init, update() only refreshes badges
-  renderMuscleTable(S())
+  renderMuscleTable(B())
   restoreDraft()
   goSection(activeSec, false)
   update()
