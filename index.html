@@ -414,7 +414,7 @@
   <div class="card">
     <div class="card-title">绳动器械（满分 4）</div>
     <div class="card-hint">基准站位数 = floor(S/100) = <span id="rope-base-hint">—</span><br>
-    &lt;70% → 0分 &nbsp;|&nbsp; 70%~100% → 2分 &nbsp;|&nbsp; ≥100% → 4分</div>
+    按实际总站位数 / 基准站位数等比例计分，满分 4</div>
     <div class="num-row">
       <div class="num-label">实际总站位数<small>含多站位综合器、小龙门、八爪鱼</small></div>
       <input type="number" class="num-input" id="rope-count" value="0" min="0">
@@ -611,6 +611,10 @@
     </div>
     <div style="font-family:var(--mono);font-size:0.76rem;color:var(--text-dim);margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
       合计: <span id="cardio-total-count" style="color:var(--ice)">0</span> 台 &nbsp;|&nbsp; 类型: <span id="cardio-type-count" style="color:var(--ice)">0</span> 种 &nbsp;|&nbsp; 当前档位: <span id="cardio-score-hint" style="color:var(--steel)">—</span>
+    </div>
+    <div class="tog-row" style="margin-top:0.5rem">
+      <span>有氧数量极多 / 使用优质有氧器械 → 升1档</span>
+      <div class="tog" id="tog-cardio-premium"></div>
     </div>
     <div class="tog-row" style="margin-top:0.5rem">
       <span>明显故障率高 → 降1档</span>
@@ -1099,7 +1103,7 @@ const st = {
   deadliftCount:0, deadlift:null,
   advancedSet:new Set(),
   funcToolsSet:new Set(),
-  cardio:{treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}, cardioFail:false,
+  cardio:{treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}, cardioPremium:false, cardioFail:false,
   layout:{zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,hygienePenalty:false,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null},
   styling:false,
   lockerStorage:0, shower:0, lockerDesign:0, restroom:0,
@@ -1147,10 +1151,10 @@ const MUSCLE_DETAILS = {
     ['pressPlate','挂片推'], ['pressPin','插片推'], ['abduction','外展'], ['rear','水平外展'],
   ],
   arms: [
-    ['bicepsHigh','高位二头'], ['bicepsMid','中位二头'], ['bicepsLow','低位二头'], ['tricepsDown','三头下压'], ['tricepsExtension','三头屈伸'],
+    ['bicepsHigh','高位二头'], ['bicepsMid','中位二头'], ['bicepsLow','低位二头'], ['tricepsDown','三头下压'], ['tricepsExtension','三头屈伸'], ['forearm','小臂'],
   ],
   core: [
-    ['roman','罗马椅'], ['crunch','卷腹椅'], ['ghd','GHD'], ['abMachine','单独卷腹器械'],
+    ['roman','罗马椅'], ['crunch','卷腹椅'], ['ghd','GHD'], ['abMachine','单独卷腹器械'], ['rotation','转体'],
   ],
 }
 
@@ -1234,7 +1238,7 @@ function engine() {
 
   // rope
   const ropeBase = Math.floor(s / 100)
-  let rope = st.ropeCount < ropeBase*0.7 ? 0 : st.ropeCount < ropeBase ? 2 : 4
+  let rope = Math.min(4, (st.ropeCount / Math.max(1, ropeBase)) * 4)
   if (st.ropePenalty) rope = Math.max(0, rope-1)
   if (st.ropeBonus)   rope = Math.min(4, rope+1)
 
@@ -1277,12 +1281,12 @@ function engine() {
   const cardioBase = Math.max(5, Math.floor(s/100))
   let cardioScore
   if (cardioTotal===0) cardioScore=0
-  else if (cardioTotal<=3) cardioScore=1
-  else if (cardioTypes<=2) cardioScore=2
   else if (cardioTotal>=cardioBase*1.5 && cardioTypes>=4) cardioScore=5
-  else if (cardioTotal>cardioBase && cardioTypes>=3) cardioScore = cardioTotal>=cardioBase*1.2?4:3
+  else if (cardioTotal>cardioBase && cardioTypes>=3) cardioScore=4
+  else if (cardioTotal>=cardioBase) cardioScore=3
   else cardioScore=2
-  if (st.cardioFail) cardioScore = Math.max(1, cardioScore-1)
+  if (st.cardioPremium && cardioScore > 0) cardioScore = Math.min(5, cardioScore+1)
+  if (st.cardioFail && cardioScore > 0) cardioScore = Math.max(1, cardioScore-1)
 
   const equipBase = fixedRaw + freeFull + cardioScore
 
@@ -1400,7 +1404,7 @@ function update() {
 
   // rope badge
   const rb = document.getElementById('rope-badge')
-  if(rb){ const raw=st.ropeCount<res.ropeBase*0.7?0:st.ropeCount<res.ropeBase?2:4; rb.textContent=`${raw}分 → ${res.rope}分`; rb.className='num-badge '+(res.rope>=4?'badge-pass':res.rope>=2?'badge-neutral':'badge-fail') }
+  if(rb){ const raw=Math.min(4, (st.ropeCount / Math.max(1, res.ropeBase)) * 4); rb.textContent=`${raw.toFixed(1)}分 → ${res.rope.toFixed(1)}分`; rb.className='num-badge '+(res.rope>=4?'badge-pass':res.rope>=2?'badge-neutral':'badge-fail') }
 
   // smith badge
   const smb = document.getElementById('smith-badge')
@@ -1463,7 +1467,7 @@ function update() {
   // cardio hints
   const ctc = document.getElementById('cardio-total-count'); if(ctc) ctc.textContent=res.cardioTotal
   const ctyc = document.getElementById('cardio-type-count'); if(ctyc) ctyc.textContent=res.cardioTypes
-  const csh = document.getElementById('cardio-score-hint'); if(csh) csh.textContent=`${res.cardioScore}分`+(st.cardioFail?' (故障降1档)':'')
+  const csh = document.getElementById('cardio-score-hint'); if(csh) csh.textContent=`${res.cardioScore}分`+(st.cardioPremium?' (优质/极多升1档)':'')+(st.cardioFail?' (故障降1档)':'')
 
   // recovery hint
   const rsh = document.getElementById('recovery-score-hint')
@@ -1893,7 +1897,7 @@ function originalTableRows(res = engine()) {
   const trainerScore = Math.max(st.trainer ? 1 : 0, st.freeTrainer ? 1 : 0)
   const waterScore = st.water ? 1 : 0
   const pricingScore = (st.membership ? 1 : 0) + (st.priceMatch ?? 0)
-  const cardioNote = `跑步机${st.cardio.treadmill}，椭圆机${st.cardio.elliptical}，楼梯机${st.cardio.stairmaster}，单车${st.cardio.bike}，其他${st.cardio.other}；类型${res.cardioTypes}种；故障降档：${yesNo(st.cardioFail)}`
+  const cardioNote = `跑步机${st.cardio.treadmill}，椭圆机${st.cardio.elliptical}，楼梯机${st.cardio.stairmaster}，单车${st.cardio.bike}，其他${st.cardio.other}；类型${res.cardioTypes}种；极多/优质升档：${yesNo(st.cardioPremium)}；故障降档：${yesNo(st.cardioFail)}`
   const bonusNote = scoreNoteParts([
     `Hyrox/CF：${yesNo(st.hyrox)}`,
     `超大功能区：${yesNo(st.funcArea)}`,
@@ -1922,13 +1926,13 @@ function originalTableRows(res = engine()) {
     ['','','','','','','',''],
     ['','','','','','','',''],
     ['','自由器械','0.22','绳动器械：多站位/小龙门/八爪鱼',4,'',res.rope,`自由器械总分：${res.freeFull.toFixed(2)}；绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
-    ['','','','总站位数量≥S/100；配件丰富升档，故障降档','','','',`绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope}`],
+    ['','','','总站位按实际/基准比例得分；配件丰富升档，故障降档','','','',`绳动站位${st.ropeCount}，基准${res.ropeBase}，配件升档：${yesNo(st.ropeBonus)}，故障降档：${yesNo(st.ropePenalty)}，得分${res.rope.toFixed(2)}`],
     ['','','','史密斯：质量是否达标；数量=S/500',1,'',res.smith,`史密斯${st.smithCount}台，基准${res.smithBase}，质量达标：${yesNo(st.smithQuality)}，两种类型：${st.smithCount >= 2 ? yesNo(st.smithDualTypes) : '台数<2未记录'}，得分${res.smith}`],
     ['','','','力量区基础项：深蹲架/卧推台/哑铃/杠铃杆/杠铃片/可调凳/硬拉平台',15,'',res.basicSum + res.allMaxBonus,scoreNoteParts([`深蹲架${st.sqRackCount}台/基准${res.sqRackBase}-${selectedText('#sqrack-opts .opt.sel')}，得分${res.basicDetail.sqRack.toFixed(1)}`,`卧推台${st.benchCount}台/基准${res.benchBase}-${selectedText('#bench-opts .opt.sel')}，得分${res.basicDetail.bench.toFixed(1)}`,`哑铃最大${st.dumbbellMax}kg-${selectedText('#dumbbell-opts .opt.sel')}，得分${res.basicDetail.dumbbell.toFixed(1)}`,`杠铃杆-${selectedText('#barbell-bar-opts .opt.sel')}，得分${res.basicDetail.barbellBar.toFixed(1)}；杆型：${barTypes}`,`杠铃片-${selectedText('#plate-opts .opt.sel')}，得分${res.basicDetail.barbellPlate.toFixed(1)}；片型：${plateTypes}`,`可调凳${st.adjBenchCount}台/基准${res.adjBase}-${selectedText('#adj-bench-opts .opt.sel')}，得分${res.basicDetail.adjBench.toFixed(1)}`,`硬拉/举重平台${st.deadliftCount}个/基准${res.deadliftBase}-${selectedText('#deadlift-opts .opt.sel')}，得分${res.basicDetail.deadlift.toFixed(1)}`,`基础项${res.basicSum.toFixed(1)}，全满加分${res.allMaxBonus}`])],
     ['','','','数量基准：综合架max(1,S/300)；卧推架max(1,S/300上限6)；可调凳S/100且基础值4；硬拉台max(1,S/500)','','','',''],
     ['','','','力量区深度项：专项杠铃≥2种；赛级卧推凳/钢片架；附件齐全；硬拉台工艺/多套哑铃',2,'',res.advScore,`专项杠铃：${specialBars}（${res.adv1SpecialCount}/2）；赛级卧推/钢片架：${yesNo(st.advancedSet.has('adv2'))}；附件齐全：${yesNo(st.advancedSet.has('adv3'))}；硬拉台/多套哑铃：${yesNo(st.advancedSet.has('adv4'))}；深度分${res.advScore.toFixed(1)}`],
-    ['','有氧器械','0.05','数量=S/100，基础值5；类型至少含跑步机/椭圆机/楼梯机/单车中的三类',5,'',res.cardioScore.toFixed(2),cardioNote],
-    ['','','','数量≤3台或多台故障→1；数量略少且类型≤2→2；高于基础且类型≥3→3-4；1.5倍且类型≥4→5','','','',''],
+    ['','有氧器械','0.05','数量=S/100，基础值5；数量未达标且类型≤2为2，数量达标为3，高于基础且类型≥3为4',5,'',res.cardioScore.toFixed(2),cardioNote],
+    ['','','','1.5倍且类型≥4为5；有氧数量极多或使用优质有氧器械升1档；故障率高降1档','','','',''],
     ['环境 25%','空间布局','0.2','布局/动线/层高/高峰排队感',5,'',layoutCoreScore,scoreNoteParts([`空间布局总分：${Math.min(res.layoutRaw,20).toFixed(2)}/20`,`分区：${selectedText('#layout-zoning .opt.sel')}`,`动线：${selectedText('#layout-circulation .opt.sel')}`,`层高：${selectedText('#layout-ceiling .opt.sel')}`,`高峰排队：${selectedText('#layout-crowd .opt.sel')}`])],
     ['','','','功能训练区：空间可用性与工具覆盖',5,'',layoutFuncScore,`面积：${selectedText('#layout-func-space .opt.sel')}；工具：${selectedText('#layout-func-tools .opt.sel')}`],
     ['','','','休息区/开放吧台',1,'',lo.rest ?? 0,selectedText('#layout-rest .opt.sel')],
@@ -2389,6 +2393,7 @@ async function importOriginalFormatExcel(file) {
   st.cardio.stairmaster = parseIntMatch(cells.H20, /楼梯机(\d+)/, 0)
   st.cardio.bike = parseIntMatch(cells.H20, /单车(\d+)/, 0)
   st.cardio.other = parseIntMatch(cells.H20, /其他(\d+)/, 0)
+  st.cardioPremium = parseBoolText(notePart(cells.H20, '极多/优质升档：'))
   st.cardioFail = parseBoolText(notePart(cells.H20, '故障降档：'))
 
   setOptState('layout-zoning', notePart(cells.H22, '分区：'), v => { st.layout.zoning = v })
@@ -2751,6 +2756,7 @@ function resetAppState() {
   replaceSet(st.advancedSet, [])
   replaceSet(st.funcToolsSet, [])
   st.cardio = {treadmill:0,elliptical:0,stairmaster:0,bike:0,other:0}
+  st.cardioPremium = false
   st.cardioFail = false
   st.layout = {zoning:null,circulation:null,ceiling:null,crowd:null,funcSpace:null,funcTools:null,rest:null,odor:null,ventilation:null,hygiene:null,hygienePenalty:false,flooring:null,visual:null,audio:null,mirror:null,atmosphere:null}
   st.styling = false
@@ -2840,6 +2846,7 @@ function syncDomFromState() {
   ;['tog-adv2','tog-adv3','tog-adv4'].forEach(id => applyToggle(id, st.advancedSet.has(id.replace('tog-',''))))
 
   ;['treadmill','elliptical','stairmaster','bike','other'].forEach(k => setNumber('c-'+k, st.cardio[k]))
+  applyToggle('tog-cardio-premium', st.cardioPremium)
   applyToggle('tog-cardio-fail', st.cardioFail)
 
   const layoutOpts = [
@@ -3026,6 +3033,7 @@ function initUI() {
   ;['treadmill','elliptical','stairmaster','bike','other'].forEach(k=>{
     numInput('c-'+k, v=>{ st.cardio[k]=v })
   })
+  tog('tog-cardio-premium', v=>{ st.cardioPremium=v; update() })
   tog('tog-cardio-fail', v=>{ st.cardioFail=v; update() })
 
   // layout opts
