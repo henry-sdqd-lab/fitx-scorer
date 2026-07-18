@@ -69,7 +69,7 @@
   #section-service .section-header::after,#section-surroundings .section-header::after{background:var(--cal-green);}
   #section-bonus .section-header::after{background:var(--cal-chrome);}
   #section-final .section-header::after{background:var(--ice);}
-  .section-title{font-family:var(--display);font-stretch:125%;font-weight:900;font-size:2.5rem;line-height:1.05;letter-spacing:0.5px;color:var(--ice);text-transform:uppercase;}
+  .section-title{font-family:var(--display);font-stretch:125%;font-weight:900;font-size:2.5rem;line-height:1.05;letter-spacing:0.5px;color:var(--ice);text-transform:uppercase;display:flex;align-items:baseline;gap:0.75rem;flex-wrap:wrap;}
   .section-subtitle{font-size:0.72rem;color:var(--text-dim);margin-top:0.55rem;font-family:var(--mono);letter-spacing:0.5px;}
 
   .card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:1.35rem 1.4rem;margin-bottom:1.1rem;}
@@ -77,8 +77,10 @@
   .action-btn{appearance:none;border:1px solid var(--ice);background:var(--ice);color:var(--bg);border-radius:4px;padding:0.55rem 0.85rem;font-size:0.78rem;font-weight:700;cursor:pointer;min-height:40px;}
   .action-btn.secondary{background:var(--bg2);color:var(--ice);border-color:var(--border);}
   .action-btn:focus-visible{outline:2px solid var(--steel);outline-offset:2px;}
-  .card-title{font-size:0.66rem;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-mid);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;}
+  .card-title{font-size:0.66rem;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-mid);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;line-height:1.5;}
   .card-title::before{content:'';width:7px;height:7px;background:var(--ice);flex-shrink:0;}
+  .score-chip{margin-left:auto;font-family:var(--mono);font-size:0.66rem;font-weight:800;letter-spacing:0;padding:2px 8px;border-radius:2px;background:var(--ice);color:var(--bg);white-space:nowrap;text-transform:none;}
+  .section-title .score-chip{margin-left:0;font-size:0.78rem;align-self:center;background:var(--bg2);color:var(--steel);border:1px solid var(--border);}
   .card-hint{font-size:0.73rem;color:var(--text-dim);margin-bottom:0.8rem;line-height:1.7;}
 
   /* number rows */
@@ -587,6 +589,7 @@
 <div class="section" id="section-cardio">
   <div class="section-header"><div class="section-title">有氧器械</div><div class="section-subtitle">权重 0.05 · 满分 5</div></div>
   <div class="card">
+    <div class="card-title">有氧数量与类型（满分 5）</div>
     <div class="card-hint">基准数量 = max(5, floor(S/100)) = <span id="cardio-base-hint">—</span><br>
     类型须包含跑步机/椭圆机/楼梯机/单车中的至少3类</div>
     <div class="num-row">
@@ -1348,6 +1351,122 @@ function engine() {
   }
 }
 
+function fmtScoreNumber(v) {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '0'
+  const rounded = Math.round(n * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+function scoreText(value, max = null, opts = {}) {
+  const prefix = opts.prefix || ''
+  const suffix = opts.suffix || ''
+  const signed = opts.signed || false
+  const v = Number(value) || 0
+  const sign = signed && v > 0 ? '+' : ''
+  if (max === null || max === undefined) return `${sign}${prefix}${fmtScoreNumber(v)}${suffix}`
+  return `${sign}${prefix}${fmtScoreNumber(v)}/${fmtScoreNumber(max)}${suffix}`
+}
+
+function setScoreChip(host, text) {
+  if (!host) return
+  let chip = host.querySelector(':scope > .score-chip')
+  if (!chip) {
+    chip = document.createElement('span')
+    chip.className = 'score-chip'
+    host.appendChild(chip)
+  }
+  chip.textContent = text
+}
+
+function setSectionScore(sectionId, value, max = null, opts = {}) {
+  const title = document.querySelector(`#${sectionId} .section-title`)
+  setScoreChip(title, scoreText(value, max, opts))
+}
+
+function setCardScoreByTitle(sectionId, titleText, value, max = null, opts = {}) {
+  const section = document.getElementById(sectionId)
+  if (!section) return
+  const title = [...section.querySelectorAll('.card-title')].find(el => {
+    const ownText = [...el.childNodes]
+      .filter(node => node.nodeType === 3)
+      .map(node => node.textContent)
+      .join('')
+      .trim()
+    return ownText.startsWith(titleText)
+  })
+  setScoreChip(title, scoreText(value, max, opts))
+}
+
+function updateScoreChips(res) {
+  const lo = st.layout
+  const layoutFuncScore = (lo.funcSpace ?? 0) + res.ftScore
+  const airScore = (lo.odor ?? 0) + (lo.ventilation ?? 0)
+  const visualAudioScore = (lo.visual ?? 0) + (lo.audio ?? 0)
+  const infraScore = (st.scanner ? 0.5 : 0) + (st.access ? 0.5 : 0)
+  const trainerScore = Math.max(st.trainer ? 1 : 0, st.freeTrainer ? 1 : 0)
+  const waterScore = st.water ? 1 : 0
+  const pricingScore = (st.membership ? 1 : 0) + (st.priceMatch ?? 0)
+  const trainingEcoScore = (st.hyrox ? 0.5 : 0) + (st.funcArea ? 0.5 : 0) + (st.pool ? 2 : 0)
+
+  setSectionScore('section-fixed', res.fixedRaw, 28)
+  setSectionScore('section-free', res.freeFull, 22)
+  setSectionScore('section-cardio', res.cardioScore, 5)
+  setSectionScore('section-layout', Math.min(res.layoutRaw, 20), 20)
+  setSectionScore('section-locker', Math.min(res.lockerRaw, 5), 5)
+  setSectionScore('section-service', res.svcBase, 10)
+  setSectionScore('section-surroundings', res.surroundBase, 10)
+  setSectionScore('section-bonus', res.bonusTotal, null, {signed:true})
+  setSectionScore('section-final', res.grand, 100)
+
+  setCardScoreByTitle('section-fixed', '品牌质量系数', res.brandC, null, {prefix:'×'})
+  setCardScoreByTitle('section-fixed', '器械搭配成熟度系数', res.mixC, null, {prefix:'×'})
+  setCardScoreByTitle('section-fixed', '插挂比例系数', res.ratioC, null, {prefix:'×'})
+  setCardScoreByTitle('section-fixed', '16大类覆盖', res.catScore, 8)
+  setCardScoreByTitle('section-fixed', '肌群覆盖度', res.covScore, 20)
+
+  setCardScoreByTitle('section-free', '绳动器械', res.rope, 4)
+  setCardScoreByTitle('section-free', '史密斯机', res.smith, 1)
+  setCardScoreByTitle('section-free', '力量区基础项', res.basicSum + res.allMaxBonus, 15)
+  setCardScoreByTitle('section-free', '力量区深度项', res.advScore, 2)
+
+  setCardScoreByTitle('section-cardio', '有氧数量与类型', res.cardioScore, 5)
+
+  setCardScoreByTitle('section-layout', '分区清晰度', lo.zoning ?? 0, 2.5)
+  setCardScoreByTitle('section-layout', '动线与间距', lo.circulation ?? 0, 1)
+  setCardScoreByTitle('section-layout', '层高', lo.ceiling ?? 0, 1)
+  setCardScoreByTitle('section-layout', '高峰排队感', lo.crowd ?? 0, 0.5)
+  setCardScoreByTitle('section-layout', '功能训练区', layoutFuncScore, 5)
+  setCardScoreByTitle('section-layout', '休息区/开放吧台', lo.rest ?? 0, 1)
+  setCardScoreByTitle('section-layout', '体感 · 空气', airScore, 2)
+  setCardScoreByTitle('section-layout', '卫生', res.hygieneBase, 2)
+  setCardScoreByTitle('section-layout', '地面', lo.flooring ?? 0, 1)
+  setCardScoreByTitle('section-layout', '视听感受', visualAudioScore, 1)
+  setCardScoreByTitle('section-layout', '镜面与灯光', lo.mirror ?? 0, 1)
+  setCardScoreByTitle('section-layout', '氛围与归位秩序', lo.atmosphere ?? 0, 2)
+  setCardScoreByTitle('section-layout', '造型室', st.styling ? 0.5 : 0, null, {signed:true})
+
+  setCardScoreByTitle('section-locker', '柜子', st.lockerStorage, 1)
+  setCardScoreByTitle('section-locker', '淋浴', st.shower, 1)
+  setCardScoreByTitle('section-locker', '更衣室设计', st.lockerDesign, 2)
+  setCardScoreByTitle('section-locker', '卫生间', st.restroom, 1)
+
+  setCardScoreByTitle('section-service', '基础设施', infraScore, 1)
+  setCardScoreByTitle('section-service', '人员服务', res.staffScore, 2)
+  setCardScoreByTitle('section-service', '教练与课程', trainerScore, 1)
+  setCardScoreByTitle('section-service', '补给', waterScore, 1)
+  setCardScoreByTitle('section-service', '开放时间', st.openHours ?? 0, 2)
+  setCardScoreByTitle('section-service', '卡价合理度', pricingScore, 3)
+
+  setCardScoreByTitle('section-surroundings', '公共交通', st.transport ?? 0, 4)
+  setCardScoreByTitle('section-surroundings', '停车', st.parking ?? 0, 3)
+  setCardScoreByTitle('section-surroundings', '500米内配套', st.amenities ?? 0, 2)
+  setCardScoreByTitle('section-surroundings', '辐射人群', st.catchment ?? 0, 1)
+
+  setCardScoreByTitle('section-bonus', '训练生态', trainingEcoScore, null, {signed:true})
+  setCardScoreByTitle('section-bonus', '恢复设施', res.recoveryBonus, 2)
+}
+
 function update() {
   const s = B()
   const actualArea = S()
@@ -1355,6 +1474,7 @@ function update() {
   const res = engine()
 
   renderMuscleTable(s)  // 单点驱动肌群徽章刷新，不依赖用户是否触碰输入框
+  updateScoreChips(res)
 
   document.getElementById('hdr-total').textContent = res.grand.toFixed(2)
   document.getElementById('hdr-grade').textContent = res.grade
